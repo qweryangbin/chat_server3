@@ -16,12 +16,12 @@
     selct_all_user/0,
     select_user/1,
     init_tables/0,
-    add_messages/3,
+    add_messages/4,
     select_room_message/1,
     remove_room_message/1,
     select_room_message_all_row/1]).
 -record(users, {username, password}).
--record(messages, {roomname, username, text}).
+-record(messages, {roomname, username, text, time}).
 
 %% 创建数据库
 create() ->
@@ -56,8 +56,8 @@ add_user(UserName, Password) ->
         end,
     mnesia:transaction(F).
 
-add_messages(RoomName, UserName, Text) ->
-    Row = #messages{roomname = RoomName, username = UserName, text = Text},
+add_messages(RoomName, UserName, Text, Date) ->
+    Row = #messages{roomname = RoomName, username = UserName, text = Text, time = Date},
     F = fun() ->
         mnesia:write(Row)
         end,

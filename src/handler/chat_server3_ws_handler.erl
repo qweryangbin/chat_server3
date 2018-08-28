@@ -68,7 +68,8 @@ websocket_handle({binary, Msg}, State) ->
                                             CurrentUser = list_to_atom(string:sub_word(binary_to_list(User), 2, $:)),
                                             CurrentRoomName = list_to_atom(string:sub_word(binary_to_list(User), 1, $:)),
                                             Bin = unicode:characters_to_list(Text),
-                                            chat_server3_mnesia:add_messages(CurrentRoomName, CurrentUser, Bin),
+                                            Date = calendar:local_time(),
+                                            chat_server3_mnesia:add_messages(CurrentRoomName, CurrentUser, Bin, Date),
                                             chat_server3_room_wk:send_room_msg(CurrentRoomName, Msg);
                                         false ->
                                             case Target == <<"exit">> of

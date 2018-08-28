@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>私聊</title>
+    <script src="/static/jquery.min.js"></script>
+    <script src="/static/protobuf.js"></script>
+    <script>
+        $(document).ready(function(){
+           connect();
+           $('#output').scrollTop($('#output')[0].scrollHeight);
+        });
+
+        function connect(){
+            wsHost = "ws://192.168.56.130:8080/websocket";
+            websocket = new WebSocket(wsHost);
+            //$("#title").html(roomName);
+            //websocket.onopen = function(evt) { onOpen(evt) };
+            //websocket.onclose = function(evt) { onClose(evt) };
+            //websocket.onmessage = function(evt) { onMessage(evt) };
+            //websocket.onerror = function(evt) { onError(evt) };
+        };
+
+        function onOpen(evt) {
+            showScreen('<span style="color: green;">连接 </span>');
+        };
+
+        function onClose(evt) {
+            showScreen('<span style="color: red;">断开连接 </span>');
+        };
+
+        function onError(evt) {
+            showScreen('<span style="color: red;">未连接上</span>');
+        };
+    </script>
+</head>
+<body>
+    <h1 id="title"></h1>
+    <div id="output" style="width:400px;height:400px;border-color:red;border:1px solid black;overflow-y:scroll;float:left"></div>
+    <div id="connected" style="position:absolute;top:420px">
+        <p>
+            <input type='text' id="send_txt" value=""/>
+            <button type="button" onclick="sendTxt();">发送</button>
+            <button id="clear" onclick="clearScreen()" >清除</button>
+        </p>
+    </div>
+</body>
+</html>

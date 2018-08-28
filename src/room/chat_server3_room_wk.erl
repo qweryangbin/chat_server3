@@ -15,7 +15,6 @@
 -export([start_link/0,
     start_link/1,
     create_room/1,
-    save_room/2,
     push_room_user_list/3,
     send_user_quit_room_msg/3,
     push_offline_message/3,
@@ -36,22 +35,23 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec create_room(Name::atom()) -> atom().
+-spec create_room(Name::atom()) -> ok.
 create_room(Name) ->
     supervisor:start_child(chat_server3_room_sup, [Name]).
 
-save_room(RoomName, Room) when is_tuple(Room)->
-    gen_server:call(RoomName, {save_room, Room}).
-
+-spec push_room_user_list(RoomName::atom(), Msg::binary(), PidList::list()) -> ok.
 push_room_user_list(RoomName, Msg, PidList)->
     gen_server:call(RoomName, {push_room_user, Msg, PidList}).
 
+-spec send_user_quit_room_msg(RoomName::atom(), Msg::binary(), Pid::pid()) -> ok.
 send_user_quit_room_msg(RoomName, Msg, Pid) ->
     gen_server:call(RoomName, {send_user_quit_room_msg, RoomName, Msg, Pid}).
 
+-spec send_room_msg(RoomName::atom(), Msg::binary()) -> ok.
 send_room_msg(RoomName, Msg) ->
     gen_server:call(RoomName, {send_room_msg, RoomName, Msg}).
 
+-spec push_offline_message(RoomName::atom(), Pid::pid(), Msg::binary()) -> ok.
 push_offline_message(RoomName, Pid, Msg) ->
     gen_server:call(RoomName, {show_room_message, Pid, Msg}).
 
@@ -65,6 +65,8 @@ push_offline_message(RoomName, Pid, Msg) ->
     {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+-spec start_link(A::atom()) -> ok.
 start_link(A) ->
     gen_server:start_link({local, A}, ?MODULE, [], []).
 

@@ -37,7 +37,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec create_player(Name::atom()) -> atom().
+-spec create_player(Name::atom()) -> ok.
 create_player(Name) ->
     supervisor:start_child(chat_server3_player_sup, [Name]).
 
@@ -45,21 +45,27 @@ create_player(Name) ->
 push_user_list(User, List) ->
     gen_server:call(User, {push_user, List}).
 
+-spec save_client(User::atom(), Client::tuple()) -> ok.
 save_client(User, Client) when is_tuple(Client) ->
     gen_server:call(User, {save_client, Client}).
 
+-spec send(User::atom(), Mag::binary()) -> ok.
 send(User, Msg) ->
     gen_server:call(User, {send_to_one, Msg}).
 
+-spec push_room_list(User::atom(), List::list()) -> ok.
 push_room_list(User, List) ->
     gen_server:call(User, {push_room, List}).
 
+-spec push_one_room(User::atom(), Msg::binary()) -> ok.
 push_one_room(User, Msg) ->
     gen_server:call(User, {push_one_room, Msg}).
 
+-spec push_room_user_list(User::atom(), List::list(), Pid::pid()) -> ok.
 push_room_user_list(User, List, Pid) ->
     gen_server:call(User, {push_room_user, List, Pid}).
 
+-spec update_room_list(UserName::atom(), Msg::binary()) -> ok.
 update_room_list(UserName, Msg) ->
     gen_server:call(UserName, {update_room, Msg}).
 
