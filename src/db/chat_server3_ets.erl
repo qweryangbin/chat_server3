@@ -1,0 +1,52 @@
+%%%-------------------------------------------------------------------
+%%% @author ubuntu
+%%% @copyright (C) 2018, <COMPANY>
+%%% @doc
+%%%
+%%% @end
+%%% Created : 13. 八月 2018 6:26 PM
+%%%-------------------------------------------------------------------
+-module(chat_server3_ets).
+-author("ubuntu").
+
+%% API
+-export([make_new_ets/0,
+    insert/3,
+    lookup/2,
+    make_room_user/1,
+    insert_room_user/2,
+    delete/2,
+    match_delete/2,
+    delete_tab/1]).
+
+make_new_ets() ->
+    ets:new(player, [set, public, named_table]),
+    ets:new(room, [set, public, named_table]),
+    ets:new(webprocess, [bag, public, named_table]).
+
+make_room_user(Name) ->
+    ets:new(Name, [bag, public, named_table]).
+
+insert(TabName, Key, Value) ->
+    ets:insert(TabName, {Key, Value}).
+
+lookup(TabName,Key) ->
+    [L|_]= ets:lookup(TabName, Key),
+    {_, UserName} = L,
+    UserName.
+
+insert_room_user(Name, UserName) ->
+    ets:insert(Name, {UserName}).
+
+delete(TabId, Object) ->
+    ets:delete(TabId, Object).
+
+match_delete(Name, Pattern) ->
+    ets:match_delete(Name, {'$1', Pattern}).
+
+%% 删除表
+delete_tab(Name) ->
+    ets:delete(Name).
+
+
+

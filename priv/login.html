@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="/static/jquery.min.js"></script>
+    <script src="/static/protobuf.js"></script>
+    <title>登录</title>
+</head>
+<body>
+    <form action="/submit" method="post">
+        <div>
+            用户名:<input type="text" id="username" name="username"/><br>
+            密码:<input type="password" id="password" name="password"/><br>
+            <input type="submit" value="登录"/>
+        </div>
+    </form>
+</body>
+<script>
+    function checkForm() {
+        var username = $("#username").val();
+        var password = $("#password").val();
+        protobuf.load("proto/msg.proto", function(err, root){
+            if(err) throw err;
+            var WsMsg = root.lookup("chat.LoginRequest");
+            var message = WsMsg.create({username: username, password: password});
+            var encodeMsg = WsMsg.encode(message).finish();
+            $('#encodeData').attr("value", encodeMsg);
+        });
+        $("#formid").attr("action", "/submit").submit();
+    }
+</script>
+</html>

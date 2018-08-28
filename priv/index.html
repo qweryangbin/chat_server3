@@ -1,0 +1,192 @@
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Websocket client</title>
+    <script src="/static/jquery.min.js"></script>
+    <script src="/static/protobuf.js"></script>
+    <script type="text/javascript">
+
+      var websocket;
+      var user = document.cookie.split(";")[1].split("=")[1];
+      $(document).ready(function(){
+          connect();
+      });
+
+      function connect()
+      {
+          wsHost = "ws://192.168.56.130:8080/websocket";
+          websocket = new WebSocket(wsHost);
+          websocket.onopen = function(evt) { onOpen(evt) };
+          websocket.onclose = function(evt) { onClose(evt) };
+          websocket.onmessage = function(evt) { onMessage(evt) };
+          websocket.onerror = function(evt) { onError(evt) };
+      };
+
+      function disconnect() {
+          websocket.close();
+      };
+
+      function sendTxt() {
+          if(websocket.readyState != websocket.OPEN){
+              connect();
+          }
+          protobuf.load("proto/msg.proto", function(err, root){
+              if(err) throw err;
+              var txt = $("#send_txt").val();
+              var to = $("#to").val();
+              if(txt == "" || $.trim(txt).length == 0){
+                  alert("请输入要发送的消息！");
+              }else if(to == "@"){
+                  alert("请选择消息要发送给的用户！");
+              }else{
+                  var Target = to.split("@")[1];
+                  var WsMsg = root.lookup("chat.SendMessageRequest");
+                  var message = WsMsg.create({sender: user, receiver: Target, text: txt});
+                  var endcodeMsg = WsMsg.encode(message).finish();
+                  $("#send_txt").val("");
+                  showScreen('我: ' + txt);
+                  websocket.send(endcodeMsg);
+              }
+          });
+      };
+
+      function onOpen(evt) {
+          showScreen('<span style="color: green;">连接 </span>');
+          protobuf.load("proto/msg.proto", function(err, root){
+              if(err) throw err;
+              var WsMsg = root.lookup("chat.SendMessageRequest");
+              var message = WsMsg.create({sender: user, receiver: "getUser", text: "room"});
+              var endcodeMsg = WsMsg.encode(message).finish();
+              websocket.send(endcodeMsg);
+          });
+      };
+
+      function onClose(evt) {
+          showScreen('<span style="color: red;">断开连接 </span>');
+      };
+
+      function showScreen(txt) {
+          $('#output').append('<p>' + txt + '</p>');
+      };
+
+      function onMessage(evt) {
+          var reader = new FileReader();
+          reader.readAsArrayBuffer(evt.data);
+          reader.onload = function(e){
+              var encodeMsg = new Uint8Array(reader.result);
+              protobuf.load("proto/msg.proto", function(err, root){
+                  if(err) throw err;
+                  var WsMsg = root.lookup("chat.SendMessageRequest");
+                  var decodeMsg = WsMsg.decode(encodeMsg);
+                  if(decodeMsg.sender == "system"){
+                      var userList = decodeMsg.text;
+                      flushUser(userList);
+                  }else if(decodeMsg.sender == "room"){
+                      var roomList = decodeMsg.text;
+                      flushRoom(roomList);
+                  }else if(decodeMsg.sender == "roomadd"){
+                      var addRoom = decodeMsg.text;
+                      $(".rooms").append("<li><a onclick=join(this) type='checkbox' style='cursor:pointer;color:blue'>" + addRoom + "</a></li>");
+                  }else if(decodeMsg.sender == "update"){
+                      $(".rooms").each(function() {
+                          var RemoveText = decodeMsg.text.trim();
+                          $('li:contains('+ RemoveText + ')').remove();
+                      })
+                  }else{
+                      showScreen('<span style="color: blue;"> ' + decodeMsg.sender + ' : ' + decodeMsg.text + '</span>');
+                  }
+              });
+          }
+      };
+
+      function onError(evt) {
+          showScreen('<span style="color: red;">未连接上</span>');
+      };
+
+      function clearScreen()
+      {
+          $('#output').html("");
+      };
+
+      function flushUser(list){
+          $(".users").html("");
+          var UserList = list.split(",");
+          for(var i = 1; i < UserList.length-1; i++){
+               if(UserList[i] != user){
+                   $(".users").append("<li><a onclick='send(this)' style='cursor:pointer;color:blue'>" + UserList[i] + "</a></li>");
+               }
+          }
+      };
+
+      function send(obj){
+          $("#to").val("@"+obj.innerText);
+      }
+
+      function create(){
+          var name = prompt("请输入群聊房间的名字", "");
+          if (name){
+              protobuf.load("proto/msg.proto", function(err, root){
+                  if(err) throw err;
+                  var WsMsg = root.lookup("chat.SendMessageRequest");
+                  var message = WsMsg.create({sender: user, receiver: "all", text: name});
+                  var endcodeMsg = WsMsg.encode(message).finish();
+                  websocket.send(endcodeMsg);
+              });
+          }
+      };
+
+      function flushRoom(list){
+          $(".rooms").html("");
+          var roomList = list.split(",");
+          for(var i = 1; i < roomList.length-1; i++){
+              $(".rooms").append("<li><a type='checkbox' onclick='join(this)' style='cursor:pointer;color:blue'>" + roomList[i] + "</a></li>");
+          }
+      };
+
+      function join(obj){
+         if(window.confirm('你确定要进入这个群聊房间吗？')){
+         protobuf.load("proto/msg.proto", function(err, root){
+             if(err) throw err;
+             var WsMsg = root.lookup("chat.SendMessageRequest");
+             var message = WsMsg.create({sender: obj.innerText, receiver: "addUser", text: user});
+             var endcodeMsg = WsMsg.encode(message).finish();
+             websocket.send(endcodeMsg);
+         });
+             window.open("/room?roomname=" + obj.innerText + "&username=" + user);
+         }else{
+             return false;
+         }
+      };
+    </script>
+</head>
+
+<body>
+<div id="header">
+    <h1>Websocket client</h1>
+    <div id="status"></div>
+</div>
+<div style="width:150px;height:400px;border-color:red;border:1px solid black;overflow-y:auto;float:left">
+    <p style="text-align:center">当前在线用户</p>
+    <ul style="list-style:none;" class="users">
+    </ul>
+</div>
+<div id="output" style="width:400px;height:400px;border-color:red;border:1px solid black;overflow-y:auto;float:left"></div>
+<div style="width:150px;height:400px;border-color:red;border:1px solid black;overflow-y:auto;float:left">
+    <p style="text-align:center">当前群聊房间</p>
+    <ul style="list-style:none;" class="rooms">
+    </ul>
+</div>
+<div id="connected" style="position:absolute;top:480px">
+    <p>
+        <input type='text' id="to" value="@" style="width:60px;" readonly/>
+        <input type='text' id="send_txt" value=""/>
+        <button type="button" onclick="sendTxt();">发送</button>
+        <button id="clear" onclick="clearScreen()" >清除</button>
+        <button id="create" onclick="create()">创建群聊房间</button>
+    </p>
+</div>
+<div style="position:absolute;left:780px" id="room">
+
+</div>
+</body>
+</html>

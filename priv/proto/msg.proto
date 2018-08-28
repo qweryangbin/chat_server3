@@ -1,0 +1,28 @@
+package chat;
+
+enum cmd {
+    Login_Request = 1001;
+    Login_Response = 1002;
+    Send_Message_Request = 1003;
+    Send_Message_Response = 1004;
+}
+
+message LoginRequest {
+    required string username = 1;
+    required string password = 2;
+}
+
+message LoginResponse {
+    required string token = 1;
+}
+
+message SendMessageRequest {
+    optional string sender = 1;
+    optional string receiver = 2;
+    optional string text = 3;
+}
+
+message Request {
+    optional LoginRequest login = 1;
+    optional SendMessageRequest send_message = 2;
+}
