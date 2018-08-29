@@ -25,7 +25,9 @@
     select_room/0,
     add_room_user/2,
     select_room_user/0,
-    remove_room_user/2]).
+    remove_room_user/2,
+    remove_room_all_user/1]).
+
 -record(users, {username, password}).
 -record(messages, {roomname, username, text, time}).
 -record(room, {roomname, time}).
@@ -129,6 +131,7 @@ remove_room(Item) ->
         end,
     mnesia:transaction(F).
 
+%% @doc 删除群聊房间指定用户
 remove_room_user(RoomName, UserName) ->
     Oid = {roomuser, RoomName, list_to_atom(UserName)},
     F = fun() ->
@@ -136,6 +139,13 @@ remove_room_user(RoomName, UserName) ->
         end,
     mnesia:transaction(F).
 
+%% @doc 删除群聊房间所有用户
+remove_room_all_user(RoomName) ->
+    Oid = {roomuser, RoomName},
+    F = fun() ->
+        mnesia:delete(Oid)
+        end,
+    mnesia:transaction(F).
 
 do(Q) ->
     F = fun() -> qlc:e(Q) end,

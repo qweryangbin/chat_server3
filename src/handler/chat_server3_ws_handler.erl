@@ -87,10 +87,21 @@ websocket_handle({binary, Msg}, State) ->
                                                                 false ->
                                                                     ok
                                                             end,
+                                                            chat_server3_room_sup:delete_room(CurrentRoomName),
                                                             exit(shutdown)
                                                     end;
                                                 false ->
-                                                    chat_server3_player_wk:send(binary_to_atom(Target, utf8), Msg)
+                                                    case Target == <<"deleteroom">> of
+                                                        true ->
+                                                            CurrentRoomName = binary_to_atom(User, utf8),
+                                                            CurrentUser = binary_to_atom(Text, utf8),
+                                                            chat_server3_mnesia:remove_room(CurrentRoomName),
+                                                            chat_server3_mnesia:remove_room_all_user(CurrentRoomName),
+                                                            update_room(atom_to_list(CurrentUser), CurrentRoomName),
+                                                            chat_server3_room_sup:delete_room(CurrentRoomName);
+                                                        false ->
+                                                            chat_server3_player_wk:send(binary_to_atom(Target, utf8), Msg)
+                                                    end
                                             end
                                     end
                             end

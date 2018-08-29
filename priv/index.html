@@ -86,7 +86,7 @@
                       flushRoom(roomList);
                   }else if(decodeMsg.sender == "roomadd"){
                       var addRoom = decodeMsg.text;
-                      $(".rooms").append("<li><a onclick=join(this) type='checkbox' style='cursor:pointer;color:blue'>" + addRoom + "</a></li>");
+                      $(".rooms").append("<li ondblclick='delete_room(this)'><a onclick=join(this) type='checkbox' style='cursor:pointer;color:blue'>" + addRoom + "</a></li>");
                   }else if(decodeMsg.sender == "update"){
                       $(".rooms").each(function() {
                           var RemoveText = decodeMsg.text.trim();
@@ -140,20 +140,34 @@
           $(".rooms").html("");
           var roomList = list.split(",");
           for(var i = 1; i < roomList.length-1; i++){
-              $(".rooms").append("<li><a type='checkbox' onclick='join(this)' style='cursor:pointer;color:blue'>" + roomList[i] + "</a></li>");
+              $(".rooms").append("<li ondblclick='delete_room(this)'><a type='checkbox' onclick='join(this)' style='cursor:pointer;color:blue'>" + roomList[i] + "</a></li>");
           }
       };
 
       function join(obj){
          if(window.confirm('你确定要进入这个群聊房间吗？')){
-         protobuf.load("proto/msg.proto", function(err, root){
-             if(err) throw err;
-             var WsMsg = root.lookup("chat.SendMessageRequest");
-             var message = WsMsg.create({sender: obj.innerText, receiver: "addUser", text: user});
-             var endcodeMsg = WsMsg.encode(message).finish();
-             websocket.send(endcodeMsg);
-         });
+             protobuf.load("proto/msg.proto", function(err, root){
+                 if(err) throw err;
+                 var WsMsg = root.lookup("chat.SendMessageRequest");
+                 var message = WsMsg.create({sender: obj.innerText, receiver: "addUser", text: user});
+                 var endcodeMsg = WsMsg.encode(message).finish();
+                 websocket.send(endcodeMsg);
+             });
              window.open("/room?roomname=" + obj.innerText + "&username=" + user);
+         }else{
+             return false;
+         }
+      };
+
+      function delete_room(obj){
+         if(window.confirm('你确定要解散这个群聊房间吗？')){
+             protobuf.load("proto/msg.proto", function(err, root){
+                 if(err) throw err;
+                 var WsMsg = root.lookup("chat.SendMessageRequest");
+                 var message = WsMsg.create({sender: obj.innerText, receiver: "deleteroom", text: user});
+                 var endcodeMsg = WsMsg.encode(message).finish();
+                 websocket.send(endcodeMsg);
+             });
          }else{
              return false;
          }

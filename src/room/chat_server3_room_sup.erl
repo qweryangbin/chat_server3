@@ -10,10 +10,10 @@
 -author("ubuntu").
 
 -behaviour(supervisor).
-
 %% API
 -export([start_link/0,
-    create_room/1]).
+    create_room/1,
+    delete_room/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -28,6 +28,11 @@
 -spec create_room(Name::atom()) -> ok.
 create_room(Name) ->
     supervisor:start_child(chat_server3_room_sup, [Name]).
+
+delete_room(Name) ->
+    Pid = whereis(Name),
+    supervisor:terminate_child(chat_server3_room_sup, Pid),
+    supervisor:delete_child(chat_server3_room_sup, Pid).
 
 %%--------------------------------------------------------------------
 %% @doc
