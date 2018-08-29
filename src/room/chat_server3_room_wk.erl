@@ -14,7 +14,6 @@
 %% API
 -export([start_link/0,
     start_link/1,
-    create_room/1,
     push_room_user_list/3,
     send_user_quit_room_msg/3,
     push_offline_message/3,
@@ -35,25 +34,22 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec create_room(Name::atom()) -> ok.
-create_room(Name) ->
-    supervisor:start_child(chat_server3_room_sup, [Name]).
 
 -spec push_room_user_list(RoomName::atom(), Msg::binary(), PidList::list()) -> ok.
 push_room_user_list(RoomName, Msg, PidList)->
-    gen_server:call(RoomName, {push_room_user, Msg, PidList}).
+    call(RoomName, {push_room_user, Msg, PidList}).
 
 -spec send_user_quit_room_msg(RoomName::atom(), Msg::binary(), Pid::pid()) -> ok.
 send_user_quit_room_msg(RoomName, Msg, Pid) ->
-    gen_server:call(RoomName, {send_user_quit_room_msg, RoomName, Msg, Pid}).
+    call(RoomName, {send_user_quit_room_msg, RoomName, Msg, Pid}).
 
 -spec send_room_msg(RoomName::atom(), Msg::binary()) -> ok.
 send_room_msg(RoomName, Msg) ->
-    gen_server:call(RoomName, {send_room_msg, RoomName, Msg}).
+    call(RoomName, {send_room_msg, RoomName, Msg}).
 
 -spec push_offline_message(RoomName::atom(), Pid::pid(), Msg::binary()) -> ok.
 push_offline_message(RoomName, Pid, Msg) ->
-    gen_server:call(RoomName, {show_room_message, Pid, Msg}).
+    call(RoomName, {show_room_message, Pid, Msg}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -186,3 +182,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec call(RoomName::atom(), Msg::binary()) -> ok.
+call(RoomName, Msg) ->
+    gen_server:call(RoomName, Msg).

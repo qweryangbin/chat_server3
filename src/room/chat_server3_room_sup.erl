@@ -12,7 +12,8 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/0,
+    create_room/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -22,6 +23,11 @@
 %%%===================================================================
 %%% API functions
 %%%===================================================================
+
+%% @doc 创建群聊房间进程
+-spec create_room(Name::atom()) -> ok.
+create_room(Name) ->
+    supervisor:start_child(chat_server3_room_sup, [Name]).
 
 %%--------------------------------------------------------------------
 %% @doc

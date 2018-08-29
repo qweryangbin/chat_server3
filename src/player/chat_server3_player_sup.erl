@@ -12,7 +12,8 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/0,
+    create_player/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -22,6 +23,11 @@
 %%%===================================================================
 %%% API functions
 %%%===================================================================
+
+%% @doc 创建玩家进程
+-spec create_player(Name::atom()) -> ok.
+create_player(Name) ->
+    supervisor:start_child(chat_server3_player_sup, [Name]).
 
 %%--------------------------------------------------------------------
 %% @doc

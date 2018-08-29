@@ -10,7 +10,7 @@ init(Req, State) ->
     Cookies = cowboy_req:parse_cookies(Req),
     Token = lists:keyfind(<<"token">>, 1, Cookies),
     User = element(2, lists:keyfind(<<"user">>, 1, Cookies)),
-    chat_server3_player_wk:create_player(binary_to_atom(User, utf8)),
+    chat_server3_player_sup:create_player(binary_to_atom(User, utf8)),
     {cowboy_websocket, Req, [Token|State], #{idle_timeout => 1000000}}.
 
 websocket_init(State) ->
@@ -20,9 +20,9 @@ websocket_handle({binary, Msg}, State) ->
     {_, User, Target, Text} = msg_pb:decode_msg(Msg, 'SendMessageRequest'),
     case Target == <<"all">> of
         true ->
-            chat_server3_room_wk:create_room(binary_to_atom(Text, utf8)),
-            RoomToken = chat_server3_utils:product_token(),
-            chat_server3_ets:insert(room, RoomToken, binary_to_atom(Text, utf8)),
+            chat_server3_room_sup:create_room(binary_to_atom(Text, utf8)),
+            Date = calendar:local_time(),
+            chat_server3_mnesia:add_room(binary_to_atom(Text, utf8), Date),
             Room = #'SendMessageRequest'{sender = "roomadd", receiver = "all", text = binary_to_list(Text)},
             EncodeRoom = msg_pb:encode_msg(Room),
             chat_server3_player_wk:push_one_room(binary_to_atom(User, utf8), EncodeRoom);
@@ -38,14 +38,7 @@ websocket_handle({binary, Msg}, State) ->
                     case Target == <<"addUser">> of
                         true ->
                             Name = binary_to_atom(User, utf8),
-                            EtsList = ets:all(),
-                            case lists:member(Name, EtsList) of
-                                true ->
-                                    chat_server3_ets:insert_room_user(Name, binary_to_atom(Text, utf8));
-                                false ->
-                                    chat_server3_ets:make_room_user(Name),
-                                    chat_server3_ets:insert_room_user(Name, binary_to_atom(Text, utf8))
-                            end;
+                            chat_server3_mnesia:add_room_user(Name, binary_to_atom(Text, utf8));
                         false ->
                             case Target == <<"room">> of
                                 true ->
@@ -77,16 +70,15 @@ websocket_handle({binary, Msg}, State) ->
                                                     CurrentUser = string:sub_word(binary_to_list(User), 2, $:),
                                                     CurrentRoomName = list_to_atom(string:sub_word(binary_to_list(User), 1, $:)),
                                                     chat_server3_room_wk:send_user_quit_room_msg(CurrentRoomName, Msg, self()),
-                                                    chat_server3_ets:delete(CurrentRoomName, list_to_atom(CurrentUser)),
-                                                    RoomUserList = ets:select(CurrentRoomName, [{{'$1'}, [], ['$1']}]),
+                                                    chat_server3_mnesia:remove_room_user(CurrentRoomName, CurrentUser),
+                                                    RoomUserList = chat_server3_mnesia:select_room_user(),
                                                     case length(RoomUserList) > 0 of
                                                         true ->
                                                             RoomProcessList = ets:match_object(webprocess, {CurrentRoomName, '_'}),
                                                             NewRoomProcessList = [X || {_, X} <- RoomProcessList],
                                                             push_all_room_user(CurrentRoomName, NewRoomProcessList);
                                                         false ->
-                                                            chat_server3_ets:match_delete(room, CurrentRoomName),
-                                                            chat_server3_ets:delete_tab(CurrentRoomName),
+                                                            chat_server3_mnesia:remove_room(CurrentRoomName),
                                                             Messages = chat_server3_mnesia:select_room_message_all_row(CurrentRoomName),
                                                             update_room(CurrentUser, CurrentRoomName),
                                                             case length(Messages) > 0  of
@@ -138,11 +130,12 @@ push_all_user(UserName) ->
     chat_server3_player_wk:push_user_list(binary_to_atom(UserName, utf8), EncodeUserList).
 
 push_all_room(UserName) ->
-    RoomList = ets:select(room, [{{'$1', '$2'}, [], ['$2']}]),
+    RoomList = chat_server3_mnesia:select_room(),
     case RoomList == "" of
         true ->
             ok;
         false ->
+            [chat_server3_room_sup:create_room(X) || X <- RoomList],
             RoomList2 = lists:foldl(fun(E, S) -> S ++ atom_to_list(E) ++ "," end, ",", RoomList),
             Rooms = #'SendMessageRequest'{sender = "room", receiver = "all", text = RoomList2},
             EncodeRoomList = msg_pb:encode_msg(Rooms),
@@ -150,7 +143,7 @@ push_all_room(UserName) ->
     end.
 
 push_all_room_user(Name, PidList) ->
-    RoomUserList = ets:select(Name, [{{'$1'}, [], ['$1']}]),
+    RoomUserList = chat_server3_mnesia:select_room_user(),
     RoomUserList2 = lists:foldl(fun(E, S) -> S ++ atom_to_list(E) ++ "," end, ",", RoomUserList),
     RoomUsers = #'SendMessageRequest'{sender = "room", receiver = "all", text = RoomUserList2},
     EncodeRoomUserList = msg_pb:encode_msg(RoomUsers),

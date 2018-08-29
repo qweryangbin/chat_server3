@@ -14,11 +14,12 @@
     to_string/1,
     to_list/1]).
 
+%% @doc 产生token
 product_token() ->
     L = os:cmd(uuidgen) -- "\n",
     L.
 
-
+%% @doc 将列表转换成字符串
 to_string(AtomList) when is_list(AtomList) ->
     to_string(AtomList,"");
 to_string(_) ->
@@ -26,8 +27,8 @@ to_string(_) ->
 to_string([], R) -> lists:reverse(R);
 to_string([H|T], R) ->
     to_string(T,tuple_to_list(H) ++ R);
-to_string([H|T], R) when is_list(H) ->
-    to_string(T,H ++ R);
+%%to_string([H|T], R) when is_list(H) ->
+%%    to_string(T,H ++ R);
 to_string(_, _) ->
     {error,error_type}.
 

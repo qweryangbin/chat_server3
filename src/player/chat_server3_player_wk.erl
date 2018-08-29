@@ -14,7 +14,6 @@
 %% API
 -export([start_link/0,
     start_link/1,
-    create_player/1,
     push_user_list/2,
     save_client/2,
     send/2,
@@ -37,37 +36,33 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
--spec create_player(Name::atom()) -> ok.
-create_player(Name) ->
-    supervisor:start_child(chat_server3_player_sup, [Name]).
-
 -spec push_user_list(User::atom(), List::list()) -> ok.
 push_user_list(User, List) ->
-    gen_server:call(User, {push_user, List}).
+    call(User, {push_user, List}).
 
 -spec save_client(User::atom(), Client::tuple()) -> ok.
 save_client(User, Client) when is_tuple(Client) ->
-    gen_server:call(User, {save_client, Client}).
+    call(User, {save_client, Client}).
 
 -spec send(User::atom(), Mag::binary()) -> ok.
 send(User, Msg) ->
-    gen_server:call(User, {send_to_one, Msg}).
+    call(User, {send_to_one, Msg}).
 
 -spec push_room_list(User::atom(), List::list()) -> ok.
 push_room_list(User, List) ->
-    gen_server:call(User, {push_room, List}).
+    call(User, {push_room, List}).
 
 -spec push_one_room(User::atom(), Msg::binary()) -> ok.
 push_one_room(User, Msg) ->
-    gen_server:call(User, {push_one_room, Msg}).
+    call(User, {push_one_room, Msg}).
 
 -spec push_room_user_list(User::atom(), List::list(), Pid::pid()) -> ok.
 push_room_user_list(User, List, Pid) ->
-    gen_server:call(User, {push_room_user, List, Pid}).
+    call(User, {push_room_user, List, Pid}).
 
 -spec update_room_list(UserName::atom(), Msg::binary()) -> ok.
 update_room_list(UserName, Msg) ->
-    gen_server:call(UserName, {update_room, Msg}).
+    call(UserName, {update_room, Msg}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -224,6 +219,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+%% @doc 拿到所有玩家的token列表
 get_token_list() ->
     TokenList = ets:select(player, [{{'$1', '$2'}, [], ['$1']}]),
     TokenList.
+
+-spec call(UserName::atom(), Msg::binary()) -> ok.
+call(UserName, Msg) ->
+    gen_server:call(UserName, Msg).
