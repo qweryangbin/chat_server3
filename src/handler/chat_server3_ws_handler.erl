@@ -43,7 +43,7 @@ websocket_handle({binary, Msg}, State) ->
                             case Target == <<"room">> of
                                 true ->
                                     RoomName = binary_to_atom(User, utf8),
-                                    erlang:link(whereis(RoomName)),
+                                    %erlang:link(whereis(RoomName)),
                                     chat_server3_ets:insert(webprocess, RoomName, self()),
                                     RoomProcessList = ets:match_object(webprocess, {RoomName, '_'}),
                                     NewRoomProcessList = [X || {_, X} <- RoomProcessList],
@@ -87,8 +87,8 @@ websocket_handle({binary, Msg}, State) ->
                                                                 false ->
                                                                     ok
                                                             end,
-                                                            chat_server3_room_sup:delete_room(CurrentRoomName),
-                                                            exit(shutdown)
+                                                            chat_server3_room_sup:delete_room(CurrentRoomName)
+                                                            %exit(shutdown)
                                                     end;
                                                 false ->
                                                     case Target == <<"deleteroom">> of
@@ -100,7 +100,15 @@ websocket_handle({binary, Msg}, State) ->
                                                             update_room(atom_to_list(CurrentUser), CurrentRoomName),
                                                             chat_server3_room_sup:delete_room(CurrentRoomName);
                                                         false ->
-                                                            chat_server3_player_wk:send(binary_to_atom(Target, utf8), Msg)
+                                                            case Target == <<"userexit">> of
+                                                                true ->
+                                                                    chat_server3_ets:match_delete(player,User),
+                                                                    push_all_user(User),
+                                                                    chat_server3_player_wk:send_user_login_out_msg(binary_to_atom(User, utf8), Msg),
+                                                                    chat_server3_player_sup:delete_palyer(binary_to_atom(User, utf8));
+                                                                false ->
+                                                                    chat_server3_player_wk:send(binary_to_atom(Target, utf8), Msg)
+                                                            end
                                                     end
                                             end
                                     end
@@ -130,9 +138,13 @@ websocket_info({update_room, Msg}, State) ->
     {reply, {binary, Msg}, State};
 websocket_info({push_room_msg, Msg}, State) ->
     {reply, {binary, Msg}, State};
+websocket_info({user_login_out, Msg}, State) ->
+    {reply, {binary, Msg}, State};
 websocket_info(_Info, State) ->
     {ok, State}.
 
+%% @doc 推送当前在线玩家
+-spec push_all_user(UserName::binary()) -> ok.
 push_all_user(UserName) ->
     UserList = ets:select(player, [{{'$1', '$2'}, [], ['$2']}]),
     UserList2 = lists:foldl(fun(E, S) -> S ++ binary_to_list(E) ++ "," end, ",", UserList),
@@ -140,6 +152,8 @@ push_all_user(UserName) ->
     EncodeUserList = msg_pb:encode_msg(Users),
     chat_server3_player_wk:push_user_list(binary_to_atom(UserName, utf8), EncodeUserList).
 
+%% @doc 推送当前已经创建的群聊房间
+-spec push_all_room(UserName::binary()) -> ok.
 push_all_room(UserName) ->
     RoomList = chat_server3_mnesia:select_room(),
     case RoomList == "" of
@@ -153,6 +167,8 @@ push_all_room(UserName) ->
             chat_server3_player_wk:push_room_list(binary_to_atom(UserName, utf8), EncodeRoomList)
     end.
 
+%% @doc 推送群聊房间的用户
+-spec push_all_room_user(UserName::list(), PidList::list()) -> ok.
 push_all_room_user(Name, PidList) ->
     RoomUserList = chat_server3_mnesia:select_room_user(),
     RoomUserList2 = lists:foldl(fun(E, S) -> S ++ atom_to_list(E) ++ "," end, ",", RoomUserList),
@@ -160,11 +176,15 @@ push_all_room_user(Name, PidList) ->
     EncodeRoomUserList = msg_pb:encode_msg(RoomUsers),
     chat_server3_room_wk:push_room_user_list(Name, EncodeRoomUserList, PidList).
 
+%% @doc 更新群聊房间
+-spec update_room(UserName::list(), CurrentRoomName::atom()) -> ok.
 update_room(UserName, CurrentRoomName) ->
     Rooms = #'SendMessageRequest'{sender = "update", receiver = "all", text = atom_to_list(CurrentRoomName)},
     EncodeRoomList = msg_pb:encode_msg(Rooms),
     chat_server3_player_wk:update_room_list(list_to_atom(UserName), EncodeRoomList).
 
+%% @doc 推送群聊房间离线消息
+-spec push_offline_message(UserName::atom(), Pid::pid()) -> ok.
 push_offline_message(RoomName, Pid) ->
     Messages = chat_server3_mnesia:select_room_message(RoomName),
     NewMessages = chat_server3_utils:to_string(Messages),

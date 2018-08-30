@@ -67,7 +67,7 @@ start_link() ->
     ignore |
     {error, Reason :: term()}).
 init([]) ->
-    SupFlags = {simple_one_for_one, 1, 3},
+    SupFlags = {simple_one_for_one, 0, 1},
 
     AChild = {tag1, {chat_server3_room_wk, start_link, []},
         permanent, 10000, worker, [chat_server3_room_wk]},

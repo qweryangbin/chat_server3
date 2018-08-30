@@ -19,8 +19,8 @@
     send/2,
     push_room_list/2,
     push_one_room/2,
-    push_room_user_list/3,
-    update_room_list/2]).
+    update_room_list/2,
+    send_user_login_out_msg/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -36,33 +36,40 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+%% @doc 推送当前在线玩家
 -spec push_user_list(User::atom(), List::list()) -> ok.
 push_user_list(User, List) ->
     call(User, {push_user, List}).
 
+%% @doc 保存玩家
 -spec save_client(User::atom(), Client::tuple()) -> ok.
 save_client(User, Client) when is_tuple(Client) ->
     call(User, {save_client, Client}).
 
+%% @doc 发送私聊消息
 -spec send(User::atom(), Mag::binary()) -> ok.
 send(User, Msg) ->
     call(User, {send_to_one, Msg}).
 
+%% @doc 推送当前群聊房间
 -spec push_room_list(User::atom(), List::list()) -> ok.
 push_room_list(User, List) ->
     call(User, {push_room, List}).
 
+%% @doc 推送当前创建的群聊房间
 -spec push_one_room(User::atom(), Msg::binary()) -> ok.
 push_one_room(User, Msg) ->
     call(User, {push_one_room, Msg}).
 
--spec push_room_user_list(User::atom(), List::list(), Pid::pid()) -> ok.
-push_room_user_list(User, List, Pid) ->
-    call(User, {push_room_user, List, Pid}).
-
+%% @doc 更新当前群聊房间
 -spec update_room_list(UserName::atom(), Msg::binary()) -> ok.
 update_room_list(UserName, Msg) ->
     call(UserName, {update_room, Msg}).
+
+%% @doc 更新当前群聊房间
+send_user_login_out_msg(UserName, Msg) ->
+    timer:sleep(1000),
+    call(UserName, {user_login_out, Msg}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -130,21 +137,20 @@ handle_call({push_one_room, Msg}, _From, State) ->
     TokenList = get_token_list(),
     [list_to_atom(X) ! {push_one_room, Msg} || X <- TokenList],
     {reply, ok, State};
-handle_call({push_room_user, Msg, Pid}, _From, State) ->
-    Pid ! {push_room_user, Msg},
-    {reply, ok, State};
 handle_call({update_room, Msg}, _From, State) ->
     TokenList = get_token_list(),
     [list_to_atom(X) ! {push_one_room, Msg} || X <- TokenList],
     {reply, ok, State};
+handle_call({user_login_out, Msg}, _From, State) ->
+    TokenList = get_token_list(),
+    [list_to_atom(X) ! {user_login_out, Msg} || X <- TokenList],
+    {reply, ok, State};
 handle_call({save_client, {Pid, Name}}, _From, #state{client = Client} = State) ->
-    L = registered(),
     NewName = binary_to_atom(Name, utf8),
-    case lists:member(NewName, L) of
+    case whereis(NewName) =/= undefined of
         true ->
             {reply, false, State};
         false ->
-            %% 防止页面刷新时再次注册这个进程
             case lists:member(NewName, Client) of
                 true ->
                     {reply, true, State};
@@ -153,7 +159,9 @@ handle_call({save_client, {Pid, Name}}, _From, #state{client = Client} = State) 
                     NewState = State#state{client = [NewName|Client]},
                     {reply, true, NewState}
             end
-    end.
+    end;
+handle_call(_Request, _From, State) ->
+    {reply, ok, State}.
 
 %%--------------------------------------------------------------------
 %% @private

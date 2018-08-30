@@ -36,7 +36,7 @@ echo(Echo,Req) ->
         Req
     ).
 
-%% 验证登录
+%% @doc 验证登录
 check_login(UserName, Password, Req) ->
     [H|_] = chat_server3_mnesia:select_user(UserName),
     case Password =:= H of

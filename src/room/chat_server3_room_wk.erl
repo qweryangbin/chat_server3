@@ -35,18 +35,23 @@
 %%% API
 %%%===================================================================
 
+%% @doc 推送群聊房间用户
 -spec push_room_user_list(RoomName::atom(), Msg::binary(), PidList::list()) -> ok.
 push_room_user_list(RoomName, Msg, PidList)->
     call(RoomName, {push_room_user, Msg, PidList}).
 
+%% @doc 用户退出群聊房间提示
 -spec send_user_quit_room_msg(RoomName::atom(), Msg::binary(), Pid::pid()) -> ok.
 send_user_quit_room_msg(RoomName, Msg, Pid) ->
+    timer:sleep(1000),
     call(RoomName, {send_user_quit_room_msg, RoomName, Msg, Pid}).
 
+%% @doc 发送群聊消息
 -spec send_room_msg(RoomName::atom(), Msg::binary()) -> ok.
 send_room_msg(RoomName, Msg) ->
     call(RoomName, {send_room_msg, RoomName, Msg}).
 
+%% @doc 推送群聊房间离线消息
 -spec push_offline_message(RoomName::atom(), Pid::pid(), Msg::binary()) -> ok.
 push_offline_message(RoomName, Pid, Msg) ->
     call(RoomName, {show_room_message, Pid, Msg}).

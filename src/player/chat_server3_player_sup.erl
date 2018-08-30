@@ -13,7 +13,8 @@
 
 %% API
 -export([start_link/0,
-    create_player/1]).
+    create_player/1,
+    delete_palyer/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -29,6 +30,11 @@
 create_player(Name) ->
     supervisor:start_child(chat_server3_player_sup, [Name]).
 
+%% @doc 注销玩家进程
+delete_palyer(Name) ->
+    Pid = whereis(Name),
+    supervisor:terminate_child(chat_server3_player_sup, Pid),
+    supervisor:delete_child(chat_server3_player_sup, Pid).
 %%--------------------------------------------------------------------
 %% @doc
 %% Starts the supervisor

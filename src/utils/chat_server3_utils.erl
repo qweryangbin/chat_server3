@@ -12,7 +12,8 @@
 %% API
 -export([product_token/0,
     to_string/1,
-    to_list/1]).
+    to_list/1,
+    index/2]).
 
 %% @doc 产生token
 product_token() ->
@@ -45,4 +46,17 @@ to_list([H|T], R) ->
         false ->
             L4 = atom_to_list(H),
             to_list(T, [L4|R])
+    end.
+
+-spec index(Atom::atom(), List::list()) -> ok.
+index(Atom,List)->
+    index(Atom, List, 1);
+index(_, _) ->
+    error.
+index(_,[],_) ->
+    -1;
+index(Atom, [H|T], Index) ->
+    case Atom == H of
+        true -> Index;
+        false -> index(Atom, T, Index+1)
     end.

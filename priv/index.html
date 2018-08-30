@@ -10,7 +10,9 @@
       var user = document.cookie.split(";")[1].split("=")[1];
       $(document).ready(function(){
           connect();
+          $("#status").append("<p>当前登录用户:" + user + "</p>");
       });
+
 
       function connect()
       {
@@ -91,7 +93,9 @@
                       $(".rooms").each(function() {
                           var RemoveText = decodeMsg.text.trim();
                           $('li:contains('+ RemoveText + ')').remove();
-                      })
+                      });
+                  }else if(decodeMsg.receiver == "userexit"){
+                      showScreen('<span style="color: red;"> ' + decodeMsg.text + '</span>');
                   }else{
                       showScreen('<span style="color: blue;"> ' + decodeMsg.sender + ' : ' + decodeMsg.text + '</span>');
                   }
@@ -172,6 +176,17 @@
              return false;
          }
       };
+
+      function remove(){
+         protobuf.load("proto/msg.proto", function(err, root){
+                 if(err) throw err;
+                 var WsMsg = root.lookup("chat.SendMessageRequest");
+                 var message = WsMsg.create({sender: user, receiver: "userexit", text: user + "下线"});
+                 var endcodeMsg = WsMsg.encode(message).finish();
+                 websocket.send(endcodeMsg);
+         });
+         window.location.href="http://192.168.56.130:8080/login";
+      }
     </script>
 </head>
 
@@ -191,17 +206,16 @@
     <ul style="list-style:none;" class="rooms">
     </ul>
 </div>
-<div id="connected" style="position:absolute;top:480px">
+<div id="connected" style="position:absolute;top:500px">
     <p>
         <input type='text' id="to" value="@" style="width:60px;" readonly/>
         <input type='text' id="send_txt" value=""/>
         <button type="button" onclick="sendTxt();">发送</button>
         <button id="clear" onclick="clearScreen()" >清除</button>
         <button id="create" onclick="create()">创建群聊房间</button>
+        <button id="remove" onclick="remove()">退出登录</button>
     </p>
 </div>
-<div style="position:absolute;left:780px" id="room">
-
-</div>
+<div style="position:absolute;left:780px" id="room"></div>
 </body>
 </html>
