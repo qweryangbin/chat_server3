@@ -120,31 +120,45 @@ init([]) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
+
+%% @doc 推送在线用户
 handle_call({push_user, List}, _From, State) ->
     TokenList = get_token_list(),
     [list_to_atom(X) ! {push_user, List} || X <- TokenList],
     {reply, ok, State};
+
+%% @doc 发送私聊消息
 handle_call({send_to_one, Msg}, _From, State) ->
     {_, _, Target, _} = msg_pb:decode_msg(Msg, 'SendMessageRequest'),
     Token = ets:select(player, [{{'$1', Target}, [], ['$1']}]),
     [list_to_atom(X) ! {send, Msg} || X <- Token],
     {reply, ok, State};
+
+%% @doc 推送当前群聊房间
 handle_call({push_room, Msg}, _From, State) ->
     TokenList = get_token_list(),
     [list_to_atom(X) ! {push_room, Msg} || X <- TokenList],
     {reply, ok, State};
+
+%% @doc 推送当前创建的群聊房间
 handle_call({push_one_room, Msg}, _From, State) ->
     TokenList = get_token_list(),
     [list_to_atom(X) ! {push_one_room, Msg} || X <- TokenList],
     {reply, ok, State};
+
+%% @doc 刷新页面群聊房间列表
 handle_call({update_room, Msg}, _From, State) ->
     TokenList = get_token_list(),
     [list_to_atom(X) ! {push_one_room, Msg} || X <- TokenList],
     {reply, ok, State};
+
+%% @doc 推送用户退出群聊方剂爱你提示
 handle_call({user_login_out, Msg}, _From, State) ->
     TokenList = get_token_list(),
     [list_to_atom(X) ! {user_login_out, Msg} || X <- TokenList],
     {reply, ok, State};
+
+%% @doc 保存用户
 handle_call({save_client, {Pid, Name}}, _From, #state{client = Client} = State) ->
     NewName = binary_to_atom(Name, utf8),
     case whereis(NewName) =/= undefined of
@@ -160,6 +174,7 @@ handle_call({save_client, {Pid, Name}}, _From, #state{client = Client} = State) 
                     {reply, true, NewState}
             end
     end;
+
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 

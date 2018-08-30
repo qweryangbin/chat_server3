@@ -107,18 +107,26 @@ init([]) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
+
+%% @doc 推送当前群聊房间用户
 handle_call({push_room_user, Msg, PidList}, _From, State) ->
     [Pid ! {push_room_user, Msg} || Pid <- PidList],
     {reply, ok, State};
+
+%% @doc 推送群成员退出群聊房间提示
 handle_call({send_user_quit_room_msg, RoomName, Msg, Pid}, _From, State) ->
     RoomProcessList = ets:match_object(webprocess, {RoomName, '_'}),
     chat_server3_ets:match_delete(webprocess, Pid),
     [Pid ! {send_room_msg, Msg} || {_, Pid} <- RoomProcessList],
     {reply, ok, State};
+
+%% @doc 发送群聊房间消息
 handle_call({send_room_msg, RoomName, Msg}, _From, State) ->
     RoomProcessList = ets:match_object(webprocess, {RoomName, '_'}),
     [Pid ! {send_room_msg, Msg} || {_, Pid} <- RoomProcessList],
     {reply, ok, State};
+
+%% @doc 显示群聊离线消息
 handle_call({show_room_message, Pid, Msg}, _From, State) ->
     Pid ! {push_room_msg, Msg},
     {reply, ok, State}.

@@ -20,94 +20,37 @@ websocket_handle({binary, Msg}, State) ->
     {_, User, Target, Text} = msg_pb:decode_msg(Msg, 'SendMessageRequest'),
     case Target == <<"all">> of
         true ->
-            chat_server3_room_sup:create_room(binary_to_atom(Text, utf8)),
-            Date = calendar:local_time(),
-            chat_server3_mnesia:add_room(binary_to_atom(Text, utf8), Date),
-            Room = #'SendMessageRequest'{sender = "roomadd", receiver = "all", text = binary_to_list(Text)},
-            EncodeRoom = msg_pb:encode_msg(Room),
-            chat_server3_player_wk:push_one_room(binary_to_atom(User, utf8), EncodeRoom);
+            add_room(User, Text);
         false ->
             case Target == <<"getUser">> of
                 true ->
-                    {_, Token} = lists:keyfind(<<"token">>, 1, State),
-                    UserName = chat_server3_ets:lookup(player, binary_to_list(Token)),
-                    chat_server3_player_wk:save_client(binary_to_atom(UserName, utf8), {self(), Token}),
-                    push_all_user(UserName),
-                    push_all_room(UserName);
+                    init_show(State);
                 false ->
                     case Target == <<"addUser">> of
                         true ->
-                            Name = binary_to_atom(User, utf8),
-                            chat_server3_mnesia:add_room_user(Name, binary_to_atom(Text, utf8));
+                            add_room_user(User, Text);
                         false ->
                             case Target == <<"room">> of
                                 true ->
-                                    RoomName = binary_to_atom(User, utf8),
-                                    %erlang:link(whereis(RoomName)),
-                                    chat_server3_ets:insert(webprocess, RoomName, self()),
-                                    RoomProcessList = ets:match_object(webprocess, {RoomName, '_'}),
-                                    NewRoomProcessList = [X || {_, X} <- RoomProcessList],
-                                    push_all_room_user(RoomName, NewRoomProcessList),
-                                    Messages = chat_server3_mnesia:select_room_message(RoomName),
-                                    case length(Messages) > 0 of
-                                        true ->
-                                            push_offline_message(RoomName, self());
-                                        false ->
-                                            ok
-                                    end;
+                                    init_chat_room_user(User);
                                 false ->
                                     case Target == <<"roomUser">> of
                                         true ->
-                                            CurrentUser = list_to_atom(string:sub_word(binary_to_list(User), 2, $:)),
-                                            CurrentRoomName = list_to_atom(string:sub_word(binary_to_list(User), 1, $:)),
-                                            Bin = unicode:characters_to_list(Text),
-                                            Date = calendar:local_time(),
-                                            chat_server3_mnesia:add_messages(CurrentRoomName, CurrentUser, Bin, Date),
-                                            chat_server3_room_wk:send_room_msg(CurrentRoomName, Msg);
+                                            send_chat_room_msg(User, Text, Msg);
                                         false ->
                                             case Target == <<"exit">> of
                                                 true ->
-                                                    CurrentUser = string:sub_word(binary_to_list(User), 2, $:),
-                                                    CurrentRoomName = list_to_atom(string:sub_word(binary_to_list(User), 1, $:)),
-                                                    chat_server3_room_wk:send_user_quit_room_msg(CurrentRoomName, Msg, self()),
-                                                    chat_server3_mnesia:remove_room_user(CurrentRoomName, CurrentUser),
-                                                    RoomUserList = chat_server3_mnesia:select_room_user(),
-                                                    case length(RoomUserList) > 0 of
-                                                        true ->
-                                                            RoomProcessList = ets:match_object(webprocess, {CurrentRoomName, '_'}),
-                                                            NewRoomProcessList = [X || {_, X} <- RoomProcessList],
-                                                            push_all_room_user(CurrentRoomName, NewRoomProcessList);
-                                                        false ->
-                                                            chat_server3_mnesia:remove_room(CurrentRoomName),
-                                                            Messages = chat_server3_mnesia:select_room_message_all_row(CurrentRoomName),
-                                                            update_room(CurrentUser, CurrentRoomName),
-                                                            case length(Messages) > 0  of
-                                                                true ->
-                                                                    chat_server3_mnesia:remove_room_message(CurrentRoomName);
-                                                                false ->
-                                                                    ok
-                                                            end,
-                                                            chat_server3_room_sup:delete_room(CurrentRoomName)
-                                                            %exit(shutdown)
-                                                    end;
+                                                    user_quit_room(User, Msg);
                                                 false ->
                                                     case Target == <<"deleteroom">> of
                                                         true ->
-                                                            CurrentRoomName = binary_to_atom(User, utf8),
-                                                            CurrentUser = binary_to_atom(Text, utf8),
-                                                            chat_server3_mnesia:remove_room(CurrentRoomName),
-                                                            chat_server3_mnesia:remove_room_all_user(CurrentRoomName),
-                                                            update_room(atom_to_list(CurrentUser), CurrentRoomName),
-                                                            chat_server3_room_sup:delete_room(CurrentRoomName);
+                                                            delete_chat_room(User, Text);
                                                         false ->
                                                             case Target == <<"userexit">> of
                                                                 true ->
-                                                                    chat_server3_ets:match_delete(player,User),
-                                                                    push_all_user(User),
-                                                                    chat_server3_player_wk:send_user_login_out_msg(binary_to_atom(User, utf8), Msg),
-                                                                    chat_server3_player_sup:delete_palyer(binary_to_atom(User, utf8));
+                                                                    user_login_out(User, Msg);
                                                                 false ->
-                                                                    chat_server3_player_wk:send(binary_to_atom(Target, utf8), Msg)
+                                                                    send_private_msg(Target, Msg)
                                                             end
                                                     end
                                             end
@@ -143,6 +86,99 @@ websocket_info({user_login_out, Msg}, State) ->
 websocket_info(_Info, State) ->
     {ok, State}.
 
+%% @doc 创建群聊房间
+add_room(User, Text) ->
+    chat_server3_room_sup:create_room(binary_to_atom(Text, utf8)),
+    Date = calendar:local_time(),
+    chat_server3_mnesia:add_room(binary_to_atom(Text, utf8), Date),
+    Room = #'SendMessageRequest'{sender = "roomadd", receiver = "all", text = binary_to_list(Text)},
+    EncodeRoom = msg_pb:encode_msg(Room),
+    chat_server3_player_wk:push_one_room(binary_to_atom(User, utf8), EncodeRoom).
+
+%% @doc 初始化页面显示
+init_show(State) ->
+    {_, Token} = lists:keyfind(<<"token">>, 1, State),
+    UserName = chat_server3_ets:lookup(player, binary_to_list(Token)),
+    chat_server3_player_wk:save_client(binary_to_atom(UserName, utf8), {self(), Token}),
+    push_all_user(UserName),
+    push_all_room(UserName).
+
+%% @doc 添加群聊房间用户
+add_room_user(User, Text) ->
+    Name = binary_to_atom(User, utf8),
+    chat_server3_mnesia:add_room_user(Name, binary_to_atom(Text, utf8)).
+
+%% @doc 初始化群聊房间页面显示
+init_chat_room_user(User) ->
+    RoomName = binary_to_atom(User, utf8),
+    %erlang:link(whereis(RoomName)),
+    chat_server3_ets:insert(webprocess, RoomName, self()),
+    RoomProcessList = ets:match_object(webprocess, {RoomName, '_'}),
+    NewRoomProcessList = [X || {_, X} <- RoomProcessList],
+    push_all_room_user(RoomName, NewRoomProcessList),
+    Messages = chat_server3_mnesia:select_room_message(RoomName),
+    case length(Messages) > 0 of
+        true ->
+            push_offline_message(RoomName, self());
+        false ->
+            ok
+    end.
+
+%% @doc 发送群聊房间消息
+send_chat_room_msg(User, Text, Msg) ->
+    CurrentUser = list_to_atom(string:sub_word(binary_to_list(User), 2, $:)),
+    CurrentRoomName = list_to_atom(string:sub_word(binary_to_list(User), 1, $:)),
+    Bin = unicode:characters_to_list(Text),
+    Date = calendar:local_time(),
+    chat_server3_mnesia:add_messages(CurrentRoomName, CurrentUser, Bin, Date),
+    chat_server3_room_wk:send_room_msg(CurrentRoomName, Msg).
+
+%% @doc 用户退出群聊房间
+user_quit_room(User, Msg) ->
+    CurrentUser = string:sub_word(binary_to_list(User), 2, $:),
+    CurrentRoomName = list_to_atom(string:sub_word(binary_to_list(User), 1, $:)),
+    chat_server3_room_wk:send_user_quit_room_msg(CurrentRoomName, Msg, self()),
+    chat_server3_mnesia:remove_room_user(CurrentRoomName, CurrentUser),
+    RoomUserList = chat_server3_mnesia:select_room_user(),
+    case length(RoomUserList) > 0 of
+        true ->
+            RoomProcessList = ets:match_object(webprocess, {CurrentRoomName, '_'}),
+            NewRoomProcessList = [X || {_, X} <- RoomProcessList],
+            push_all_room_user(CurrentRoomName, NewRoomProcessList);
+        false ->
+            chat_server3_mnesia:remove_room(CurrentRoomName),
+            Messages = chat_server3_mnesia:select_room_message_all_row(CurrentRoomName),
+            update_room(CurrentUser, CurrentRoomName),
+            case length(Messages) > 0  of
+                true ->
+                    chat_server3_mnesia:remove_room_message(CurrentRoomName);
+                false ->
+                    ok
+            end,
+            chat_server3_room_sup:delete_room(CurrentRoomName)
+        %exit(shutdown)
+    end.
+
+%% @doc 删除群聊房间
+delete_chat_room(User, Text) ->
+    CurrentRoomName = binary_to_atom(User, utf8),
+    CurrentUser = binary_to_atom(Text, utf8),
+    chat_server3_mnesia:remove_room(CurrentRoomName),
+    chat_server3_mnesia:remove_room_all_user(CurrentRoomName),
+    update_room(atom_to_list(CurrentUser), CurrentRoomName),
+    chat_server3_room_sup:delete_room(CurrentRoomName).
+
+%% @doc 用户退出登录
+user_login_out(User, Msg) ->
+    chat_server3_ets:match_delete(player,User),
+    push_all_user(User),
+    chat_server3_player_wk:send_user_login_out_msg(binary_to_atom(User, utf8), Msg),
+    chat_server3_player_sup:delete_palyer(binary_to_atom(User, utf8)).
+
+%% @doc 发送私聊消息
+send_private_msg(Target, Msg) ->
+    chat_server3_player_wk:send(binary_to_atom(Target, utf8), Msg).
+
 %% @doc 推送当前在线玩家
 -spec push_all_user(UserName::binary()) -> ok.
 push_all_user(UserName) ->
@@ -170,7 +206,7 @@ push_all_room(UserName) ->
 %% @doc 推送群聊房间的用户
 -spec push_all_room_user(UserName::list(), PidList::list()) -> ok.
 push_all_room_user(Name, PidList) ->
-    RoomUserList = chat_server3_mnesia:select_room_user(),
+    RoomUserList = chat_server3_mnesia:select_room_user(Name),
     RoomUserList2 = lists:foldl(fun(E, S) -> S ++ atom_to_list(E) ++ "," end, ",", RoomUserList),
     RoomUsers = #'SendMessageRequest'{sender = "room", receiver = "all", text = RoomUserList2},
     EncodeRoomUserList = msg_pb:encode_msg(RoomUsers),
@@ -193,3 +229,4 @@ push_offline_message(RoomName, Pid) ->
     Msg = #'SendMessageRequest'{sender = "showmessage", receiver = "showmessage", text = NewMessages2},
     EncodeMsg = msg_pb:encode_msg(Msg),
     chat_server3_room_wk:push_offline_message(RoomName, Pid, EncodeMsg).
+

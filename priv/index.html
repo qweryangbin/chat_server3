@@ -171,6 +171,7 @@
                  var message = WsMsg.create({sender: obj.innerText, receiver: "deleteroom", text: user});
                  var endcodeMsg = WsMsg.encode(message).finish();
                  websocket.send(endcodeMsg);
+                 window.close("/room");
              });
          }else{
              return false;

@@ -24,9 +24,11 @@
     add_room/2,
     select_room/0,
     add_room_user/2,
-    select_room_user/0,
+    select_room_user/1,
     remove_room_user/2,
-    remove_room_all_user/1]).
+    remove_room_all_user/1,
+    my_cursor/1,
+    my_next/2]).
 
 -record(users, {username, password}).
 -record(messages, {roomname, username, text, time}).
@@ -120,8 +122,8 @@ add_room_user(RoomName, UserName) ->
 select_room() ->
     do(qlc:q([X#room.roomname || X <- mnesia:table(room)])).
 
-select_room_user() ->
-    do(qlc:q([X#roomuser.username || X <- mnesia:table(roomuser)])).
+select_room_user(Name) ->
+    do(qlc:q([X#roomuser.username || X <- mnesia:table(roomuser), X#roomuser.roomname == Name])).
 
 %% @doc 删除群聊房间
 remove_room(Item) ->
@@ -146,6 +148,17 @@ remove_room_all_user(RoomName) ->
         mnesia:delete(Oid)
         end,
     mnesia:transaction(F).
+
+%% @doc 实现分页查询
+my_cursor(Name) ->
+    Q = qlc:q([X || X<- mnesia:table(Name)]),
+    mnesia:activity(async_dirty, fun() -> qlc:cursor(Q, []) end, mnesia_frag).
+
+my_next(Cursor, Num) ->
+    Get = fun() ->
+          qlc:next_answers(Cursor, Num)
+          end,
+    mnesia:activity(async_dirty, Get, mnesia_frag).
 
 do(Q) ->
     F = fun() -> qlc:e(Q) end,
