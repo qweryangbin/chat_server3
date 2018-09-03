@@ -22,7 +22,18 @@ maybe_echo(<<"POST">>, true, Req0) ->
     {ok, PostVals, Req} = cowboy_req:read_urlencoded_body(Req0),
     Name = element(2, lists:keyfind(<<"username">>, 1, PostVals)),
     Password = element(2, lists:keyfind(<<"password">>, 1, PostVals)),
-    check_login(Name, Password, Req);
+    Token = chat_server3_utils:product_token(),
+    Flag = check_login(Name, Password, Token),
+    case Flag == false of
+        true ->
+            Echo = "/loginfail",
+            cowboy_req:reply(302, #{<<"Location">> => list_to_binary(Echo)}, Req);
+        false ->
+            Req1 = cowboy_req:set_resp_cookie(<<"token">>, Token, Req, #{path => <<"/">>}),
+            Req2 = cowboy_req:set_resp_cookie(<<"user">>, Name, Req1, #{path => <<"/">>}),
+            Echo = "/index",
+            echo(Echo,Req2)
+    end;
 maybe_echo(<<"POST">>, false, Req) ->
     cowboy_req:reply(400, [], <<"Missing body.">>, Req);
 maybe_echo(_, _, Req) ->
@@ -37,16 +48,12 @@ echo(Echo,Req) ->
     ).
 
 %% @doc 验证登录
-check_login(UserName, Password, Req) ->
+check_login(UserName, Password, Token) ->
     [H|_] = chat_server3_mnesia:select_user(UserName),
     case Password =:= H of
         true ->
-            Token = chat_server3_utils:product_token(),
-            %% 创建ets表将token和当前登录用户绑定起来
-            chat_server3_ets:insert(player, Token, UserName),
-            Req1 = cowboy_req:set_resp_cookie(<<"token">>, Token, Req, #{path => <<"/">>}),
-            Req2 = cowboy_req:set_resp_cookie(<<"user">>, UserName, Req1, #{path => <<"/">>}),
-            Echo = "/index",
-            echo(Echo,Req2);
-        false -> false
+            %% 将token和当前登录用户绑定起来
+            chat_server3_ets:insert(player, Token, UserName);
+        false ->
+            false
     end.

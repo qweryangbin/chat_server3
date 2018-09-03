@@ -24,7 +24,8 @@ start(_StartType, _StartArgs) ->
             {"/login", cowboy_static, {priv_file, chat_server3, "login.html"}},
             {"/submit", chat_server3_login_handler, []},
             {"/room", cowboy_static, {priv_file, chat_server3, "room.html"}},
-            {"/privatechat", cowboy_static, {priv_file, chat_server3, "privatechat.html"}}
+            {"/privatechat", cowboy_static, {priv_file, chat_server3, "privatechat.html"}},
+            {"/loginfail", cowboy_static, {priv_file, chat_server3, "loginfail.html"}}
         ]}
     ]),
     {ok, Port} = application:get_env(http_port),
