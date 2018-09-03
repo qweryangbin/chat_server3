@@ -109,6 +109,7 @@ start_link(A) ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
+    timer:send_interval(15000,self(),check),
     {ok, #state{client = []}}.
 
 %%--------------------------------------------------------------------
@@ -219,6 +220,19 @@ handle_cast(_Request, State) ->
     {noreply, NewState :: #state{}} |
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
+handle_info(check, State) ->
+    RegName = State#state.client,
+    RegName1 = lists:nth(1, RegName),
+    case whereis(RegName1) == undefined of
+        true ->
+            Player = chat_server3_ets:lookup(player, atom_to_list(RegName1)),
+            chat_server3_ets:match_delete(player,Player),
+            chat_server3_player_sup:delete_palyer(binary_to_atom(Player, utf8));
+        false ->
+            ok
+    end,
+    {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -260,6 +274,7 @@ get_token_list() ->
     TokenList = ets:select(player, [{{'$1', '$2'}, [], ['$1']}]),
     TokenList.
 
+%% @doc 封装的call方法
 -spec call(UserName::atom(), Msg::binary()) -> ok.
 call(UserName, Msg) ->
     gen_server:call(UserName, Msg).
