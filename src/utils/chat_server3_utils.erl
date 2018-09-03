@@ -45,7 +45,7 @@ to_list([H|T], R) ->
         true ->
             to_list(T, [H|R]);
         false ->
-            L4 = binary_to_list(H),
+            L4 = atom_to_list(H),
             to_list(T, [L4|R])
     end.
 
@@ -57,10 +57,10 @@ to_list1([], R) -> lists:reverse(R);
 to_list1([H|T], R) ->
     case is_list(H) of
         true ->
-            to_list(T, [H|R]);
+            to_list1(T, [H|R]);
         false ->
             L4 = binary_to_list(H),
-            to_list(T, [L4|R])
+            to_list1(T, [L4|R])
     end.
 
 -spec index(Atom::atom(), List::list()) -> ok.

@@ -11,16 +11,7 @@
         var websocket;
         $(document).ready(function(){
            connect();
-           $("#ouuput").bind("scroll", function () {
-                var sTop = $("#ouuput").scrollTop();
-                var sTop = parseInt(sTop);
-                if (sTop >= 130) {
-                    alert("123");
-                }
-                else {
-                    alert("234");
-                }
-            });
+           //setTimeout(function(){ load(); }, 1000);
         });
         function connect(){
             wsHost = "ws://192.168.56.130:8080/websocket";
@@ -137,6 +128,16 @@
              });
          };
 
+         //function load(){
+             //protobuf.load("proto/msg.proto", function(err, root){
+                //if(err) throw err;
+                //var WsMsg = root.lookup("chat.SendMessageRequest");
+                //var message = WsMsg.create({sender: roomName, receiver: "loadRoomMsg", text: ""});
+                //var endcodeMsg = WsMsg.encode(message).finish();
+                //websocket.send(endcodeMsg);
+             //});
+         //};
+
          function showMessages(list){
              var MessagesList = list.split(",");
              for(var i = 1; i < MessagesList.length-2; i++){
@@ -145,14 +146,6 @@
                 }
              }
          };
-
-         $('#output').scroll(function(){
-             nScrollHight = $('#output')[0].scrollHeight;
-             nScrollTop = $('#output')[0].scrollTop;
-             if(nScrollTop + nDivHight >= nScrollHight){
-                alert("滚动条到底部了");
-             }
-         });
     </script>
 </head>
 <body>
