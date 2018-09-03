@@ -20,6 +20,7 @@ message SendMessageRequest {
     optional string sender = 1;
     optional string receiver = 2;
     optional string text = 3;
+    optional string msgtype = 4;
 }
 
 message Request {

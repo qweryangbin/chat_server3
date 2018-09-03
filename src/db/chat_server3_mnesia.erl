@@ -28,12 +28,17 @@
     remove_room_user/2,
     remove_room_all_user/1,
     my_cursor/1,
-    my_next/2]).
+    my_next/2,
+    add_private_msg/5,
+    select_private_msg/1,
+    update_msg_type/1,
+    select_all_prviate_msg/1]).
 
 -record(users, {username, password}).
 -record(messages, {roomname, username, text, time}).
 -record(room, {roomname, time}).
 -record(roomuser, {roomname, username}).
+-record(privatemessages, {sender, receiver, msg, type, time}).
 
 %% @doc 创建数据库
 create() ->
@@ -42,7 +47,8 @@ create() ->
     mnesia:create_table(users, [{attributes, record_info(fields, users)}, {disc_copies, [node()]}]),
     mnesia:create_table(room, [{attributes, record_info(fields, room)}, {disc_copies, [node()]}]),
     mnesia:create_table(roomuser, [{attributes, record_info(fields, roomuser)}, {disc_copies, [node()]}, {type, bag}]),
-    mnesia:create_table(messages, [{attributes, record_info(fields, messages)}, {disc_copies, [node()]}, {type, bag}]).
+    mnesia:create_table(messages, [{attributes, record_info(fields, messages)}, {disc_copies, [node()]}, {type, bag}]),
+    mnesia:create_table(privatemessages, [{attributes, record_info(fields,privatemessages)}, {disc_copies, [node()]}, {type, bag}]).
 
 %% @doc 初始化表数据
 init_tables() ->
@@ -159,6 +165,32 @@ my_next(Cursor, Num) ->
           qlc:next_answers(Cursor, Num)
           end,
     mnesia:activity(async_dirty, Get, mnesia_frag).
+
+%% @doc 存储私聊消息
+add_private_msg(Sender, Receiver, Msg, Type, Time) ->
+    Row = #privatemessages{sender = Sender, receiver = Receiver, msg = Msg, type = Type, time = Time},
+    F = fun() ->
+        mnesia:write(Row)
+        end,
+    mnesia:transaction(F).
+
+%% @doc 查询私聊离线消息
+select_private_msg(UserName) ->
+    do(qlc:q([{X#privatemessages.sender, X#privatemessages.type, X#privatemessages.msg} || X <- mnesia:table(privatemessages), X#privatemessages.receiver =:= UserName])).
+
+%% @doc 查询所有私聊离线消息
+select_all_prviate_msg(UserName) ->
+    do(qlc:q([X || X <- mnesia:table(privatemessages), X#privatemessages.receiver =:= UserName])).
+
+%% @doc 更改离线消息为已读状态
+update_msg_type(Msg) ->
+    {_, Sender, Receiver, NewMsg, _, Time} = Msg,
+    NewMsg2 = #privatemessages{sender = Sender, receiver = Receiver, msg = NewMsg, type = <<"on-line">>, time = Time},
+    F = fun() ->
+        mnesia:delete_object(Msg),
+        mnesia:write(NewMsg2)
+        end,
+    mnesia:transaction(F).
 
 do(Q) ->
     F = fun() -> qlc:e(Q) end,

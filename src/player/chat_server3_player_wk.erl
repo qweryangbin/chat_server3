@@ -20,7 +20,8 @@
     push_room_list/2,
     push_one_room/2,
     update_room_list/2,
-    send_user_login_out_msg/2]).
+    send_user_login_out_msg/2,
+    push_user_private_msg/2]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -70,6 +71,11 @@ update_room_list(UserName, Msg) ->
 send_user_login_out_msg(UserName, Msg) ->
     timer:sleep(1000),
     call(UserName, {user_login_out, Msg}).
+
+%% @doc 推送当前用户的离线消息
+-spec push_user_private_msg(User::atom(), Msg::binary()) -> ok.
+push_user_private_msg(UserName, Msg) ->
+    call(UserName, {push_private_msg, UserName, Msg}).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -129,7 +135,7 @@ handle_call({push_user, List}, _From, State) ->
 
 %% @doc 发送私聊消息
 handle_call({send_to_one, Msg}, _From, State) ->
-    {_, _, Target, _} = msg_pb:decode_msg(Msg, 'SendMessageRequest'),
+    {_, _, Target, _, _} = msg_pb:decode_msg(Msg, 'SendMessageRequest'),
     Token = ets:select(player, [{{'$1', Target}, [], ['$1']}]),
     [list_to_atom(X) ! {send, Msg} || X <- Token],
     {reply, ok, State};
@@ -156,6 +162,13 @@ handle_call({update_room, Msg}, _From, State) ->
 handle_call({user_login_out, Msg}, _From, State) ->
     TokenList = get_token_list(),
     [list_to_atom(X) ! {user_login_out, Msg} || X <- TokenList],
+    {reply, ok, State};
+
+%% @doc 加载用户离线消息
+handle_call({push_private_msg, UserName, Msg}, _From, State) ->
+    User = atom_to_binary(UserName, utf8),
+    Token = ets:select(player, [{{'$1', User}, [], ['$1']}]),
+    [list_to_atom(X) ! {push_private_msg, Msg} || X <- Token],
     {reply, ok, State};
 
 %% @doc 保存用户

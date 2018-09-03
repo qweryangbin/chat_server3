@@ -93,7 +93,8 @@ e_msg_SendMessageRequest(Msg, TrUserData) ->
 
 e_msg_SendMessageRequest(#'SendMessageRequest'{sender =
 						   F1,
-					       receiver = F2, text = F3},
+					       receiver = F2, text = F3,
+					       msgtype = F4},
 			 Bin, TrUserData) ->
     B1 = if F1 == undefined -> Bin;
 	    true ->
@@ -109,11 +110,18 @@ e_msg_SendMessageRequest(#'SendMessageRequest'{sender =
 		  e_type_string(TrF2, <<B1/binary, 18>>)
 		end
 	 end,
-    if F3 == undefined -> B2;
+    B3 = if F3 == undefined -> B2;
+	    true ->
+		begin
+		  TrF3 = id(F3, TrUserData),
+		  e_type_string(TrF3, <<B2/binary, 26>>)
+		end
+	 end,
+    if F4 == undefined -> B3;
        true ->
 	   begin
-	     TrF3 = id(F3, TrUserData),
-	     e_type_string(TrF3, <<B2/binary, 26>>)
+	     TrF4 = id(F4, TrUserData),
+	     e_type_string(TrF4, <<B3/binary, 34>>)
 	   end
     end.
 
@@ -438,174 +446,208 @@ d_msg_SendMessageRequest(Bin, TrUserData) ->
 					  id(undefined, TrUserData),
 					  id(undefined, TrUserData),
 					  id(undefined, TrUserData),
+					  id(undefined, TrUserData),
 					  TrUserData).
 
 dfp_read_field_def_SendMessageRequest(<<10,
 					Rest/binary>>,
-				      Z1, Z2, F@_1, F@_2, F@_3, TrUserData) ->
+				      Z1, Z2, F@_1, F@_2, F@_3, F@_4,
+				      TrUserData) ->
     d_field_SendMessageRequest_sender(Rest, Z1, Z2, F@_1,
-				      F@_2, F@_3, TrUserData);
+				      F@_2, F@_3, F@_4, TrUserData);
 dfp_read_field_def_SendMessageRequest(<<18,
 					Rest/binary>>,
-				      Z1, Z2, F@_1, F@_2, F@_3, TrUserData) ->
+				      Z1, Z2, F@_1, F@_2, F@_3, F@_4,
+				      TrUserData) ->
     d_field_SendMessageRequest_receiver(Rest, Z1, Z2, F@_1,
-					F@_2, F@_3, TrUserData);
+					F@_2, F@_3, F@_4, TrUserData);
 dfp_read_field_def_SendMessageRequest(<<26,
 					Rest/binary>>,
-				      Z1, Z2, F@_1, F@_2, F@_3, TrUserData) ->
+				      Z1, Z2, F@_1, F@_2, F@_3, F@_4,
+				      TrUserData) ->
     d_field_SendMessageRequest_text(Rest, Z1, Z2, F@_1,
-				    F@_2, F@_3, TrUserData);
+				    F@_2, F@_3, F@_4, TrUserData);
+dfp_read_field_def_SendMessageRequest(<<34,
+					Rest/binary>>,
+				      Z1, Z2, F@_1, F@_2, F@_3, F@_4,
+				      TrUserData) ->
+    d_field_SendMessageRequest_msgtype(Rest, Z1, Z2, F@_1,
+				       F@_2, F@_3, F@_4, TrUserData);
 dfp_read_field_def_SendMessageRequest(<<>>, 0, 0, F@_1,
-				      F@_2, F@_3, _) ->
+				      F@_2, F@_3, F@_4, _) ->
     #'SendMessageRequest'{sender = F@_1, receiver = F@_2,
-			  text = F@_3};
+			  text = F@_3, msgtype = F@_4};
 dfp_read_field_def_SendMessageRequest(Other, Z1, Z2,
-				      F@_1, F@_2, F@_3, TrUserData) ->
+				      F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     dg_read_field_def_SendMessageRequest(Other, Z1, Z2,
-					 F@_1, F@_2, F@_3, TrUserData).
+					 F@_1, F@_2, F@_3, F@_4, TrUserData).
 
 dg_read_field_def_SendMessageRequest(<<1:1, X:7,
 				       Rest/binary>>,
-				     N, Acc, F@_1, F@_2, F@_3, TrUserData)
+				     N, Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 32 - 7 ->
     dg_read_field_def_SendMessageRequest(Rest, N + 7,
-					 X bsl N + Acc, F@_1, F@_2, F@_3,
+					 X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
 					 TrUserData);
 dg_read_field_def_SendMessageRequest(<<0:1, X:7,
 				       Rest/binary>>,
-				     N, Acc, F@_1, F@_2, F@_3, TrUserData) ->
+				     N, Acc, F@_1, F@_2, F@_3, F@_4,
+				     TrUserData) ->
     Key = X bsl N + Acc,
     case Key of
       10 ->
 	  d_field_SendMessageRequest_sender(Rest, 0, 0, F@_1,
-					    F@_2, F@_3, TrUserData);
+					    F@_2, F@_3, F@_4, TrUserData);
       18 ->
 	  d_field_SendMessageRequest_receiver(Rest, 0, 0, F@_1,
-					      F@_2, F@_3, TrUserData);
+					      F@_2, F@_3, F@_4, TrUserData);
       26 ->
 	  d_field_SendMessageRequest_text(Rest, 0, 0, F@_1, F@_2,
-					  F@_3, TrUserData);
+					  F@_3, F@_4, TrUserData);
+      34 ->
+	  d_field_SendMessageRequest_msgtype(Rest, 0, 0, F@_1,
+					     F@_2, F@_3, F@_4, TrUserData);
       _ ->
 	  case Key band 7 of
 	    0 ->
 		skip_varint_SendMessageRequest(Rest, 0, 0, F@_1, F@_2,
-					       F@_3, TrUserData);
+					       F@_3, F@_4, TrUserData);
 	    1 ->
 		skip_64_SendMessageRequest(Rest, 0, 0, F@_1, F@_2, F@_3,
-					   TrUserData);
+					   F@_4, TrUserData);
 	    2 ->
 		skip_length_delimited_SendMessageRequest(Rest, 0, 0,
-							 F@_1, F@_2, F@_3,
+							 F@_1, F@_2, F@_3, F@_4,
 							 TrUserData);
 	    3 ->
 		skip_group_SendMessageRequest(Rest, Key bsr 3, 0, F@_1,
-					      F@_2, F@_3, TrUserData);
+					      F@_2, F@_3, F@_4, TrUserData);
 	    5 ->
 		skip_32_SendMessageRequest(Rest, 0, 0, F@_1, F@_2, F@_3,
-					   TrUserData)
+					   F@_4, TrUserData)
 	  end
     end;
 dg_read_field_def_SendMessageRequest(<<>>, 0, 0, F@_1,
-				     F@_2, F@_3, _) ->
+				     F@_2, F@_3, F@_4, _) ->
     #'SendMessageRequest'{sender = F@_1, receiver = F@_2,
-			  text = F@_3}.
+			  text = F@_3, msgtype = F@_4}.
 
 d_field_SendMessageRequest_sender(<<1:1, X:7,
 				    Rest/binary>>,
-				  N, Acc, F@_1, F@_2, F@_3, TrUserData)
+				  N, Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 57 ->
     d_field_SendMessageRequest_sender(Rest, N + 7,
-				      X bsl N + Acc, F@_1, F@_2, F@_3,
+				      X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
 				      TrUserData);
 d_field_SendMessageRequest_sender(<<0:1, X:7,
 				    Rest/binary>>,
-				  N, Acc, _, F@_2, F@_3, TrUserData) ->
+				  N, Acc, _, F@_2, F@_3, F@_4, TrUserData) ->
     {NewFValue, RestF} = begin
 			   Len = X bsl N + Acc,
 			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
 			   {binary:copy(Bytes), Rest2}
 			 end,
     dfp_read_field_def_SendMessageRequest(RestF, 0, 0,
-					  NewFValue, F@_2, F@_3, TrUserData).
+					  NewFValue, F@_2, F@_3, F@_4,
+					  TrUserData).
 
 d_field_SendMessageRequest_receiver(<<1:1, X:7,
 				      Rest/binary>>,
-				    N, Acc, F@_1, F@_2, F@_3, TrUserData)
+				    N, Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 57 ->
     d_field_SendMessageRequest_receiver(Rest, N + 7,
-					X bsl N + Acc, F@_1, F@_2, F@_3,
+					X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
 					TrUserData);
 d_field_SendMessageRequest_receiver(<<0:1, X:7,
 				      Rest/binary>>,
-				    N, Acc, F@_1, _, F@_3, TrUserData) ->
+				    N, Acc, F@_1, _, F@_3, F@_4, TrUserData) ->
     {NewFValue, RestF} = begin
 			   Len = X bsl N + Acc,
 			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
 			   {binary:copy(Bytes), Rest2}
 			 end,
     dfp_read_field_def_SendMessageRequest(RestF, 0, 0, F@_1,
-					  NewFValue, F@_3, TrUserData).
+					  NewFValue, F@_3, F@_4, TrUserData).
 
 d_field_SendMessageRequest_text(<<1:1, X:7,
 				  Rest/binary>>,
-				N, Acc, F@_1, F@_2, F@_3, TrUserData)
+				N, Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
     when N < 57 ->
     d_field_SendMessageRequest_text(Rest, N + 7,
-				    X bsl N + Acc, F@_1, F@_2, F@_3,
+				    X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
 				    TrUserData);
 d_field_SendMessageRequest_text(<<0:1, X:7,
 				  Rest/binary>>,
-				N, Acc, F@_1, F@_2, _, TrUserData) ->
+				N, Acc, F@_1, F@_2, _, F@_4, TrUserData) ->
     {NewFValue, RestF} = begin
 			   Len = X bsl N + Acc,
 			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
 			   {binary:copy(Bytes), Rest2}
 			 end,
     dfp_read_field_def_SendMessageRequest(RestF, 0, 0, F@_1,
-					  F@_2, NewFValue, TrUserData).
+					  F@_2, NewFValue, F@_4, TrUserData).
+
+d_field_SendMessageRequest_msgtype(<<1:1, X:7,
+				     Rest/binary>>,
+				   N, Acc, F@_1, F@_2, F@_3, F@_4, TrUserData)
+    when N < 57 ->
+    d_field_SendMessageRequest_msgtype(Rest, N + 7,
+				       X bsl N + Acc, F@_1, F@_2, F@_3, F@_4,
+				       TrUserData);
+d_field_SendMessageRequest_msgtype(<<0:1, X:7,
+				     Rest/binary>>,
+				   N, Acc, F@_1, F@_2, F@_3, _, TrUserData) ->
+    {NewFValue, RestF} = begin
+			   Len = X bsl N + Acc,
+			   <<Bytes:Len/binary, Rest2/binary>> = Rest,
+			   {binary:copy(Bytes), Rest2}
+			 end,
+    dfp_read_field_def_SendMessageRequest(RestF, 0, 0, F@_1,
+					  F@_2, F@_3, NewFValue, TrUserData).
 
 skip_varint_SendMessageRequest(<<1:1, _:7,
 				 Rest/binary>>,
-			       Z1, Z2, F@_1, F@_2, F@_3, TrUserData) ->
+			       Z1, Z2, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     skip_varint_SendMessageRequest(Rest, Z1, Z2, F@_1, F@_2,
-				   F@_3, TrUserData);
+				   F@_3, F@_4, TrUserData);
 skip_varint_SendMessageRequest(<<0:1, _:7,
 				 Rest/binary>>,
-			       Z1, Z2, F@_1, F@_2, F@_3, TrUserData) ->
+			       Z1, Z2, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     dfp_read_field_def_SendMessageRequest(Rest, Z1, Z2,
-					  F@_1, F@_2, F@_3, TrUserData).
+					  F@_1, F@_2, F@_3, F@_4, TrUserData).
 
 skip_length_delimited_SendMessageRequest(<<1:1, X:7,
 					   Rest/binary>>,
-					 N, Acc, F@_1, F@_2, F@_3, TrUserData)
+					 N, Acc, F@_1, F@_2, F@_3, F@_4,
+					 TrUserData)
     when N < 57 ->
     skip_length_delimited_SendMessageRequest(Rest, N + 7,
 					     X bsl N + Acc, F@_1, F@_2, F@_3,
-					     TrUserData);
+					     F@_4, TrUserData);
 skip_length_delimited_SendMessageRequest(<<0:1, X:7,
 					   Rest/binary>>,
-					 N, Acc, F@_1, F@_2, F@_3,
+					 N, Acc, F@_1, F@_2, F@_3, F@_4,
 					 TrUserData) ->
     Length = X bsl N + Acc,
     <<_:Length/binary, Rest2/binary>> = Rest,
     dfp_read_field_def_SendMessageRequest(Rest2, 0, 0, F@_1,
-					  F@_2, F@_3, TrUserData).
+					  F@_2, F@_3, F@_4, TrUserData).
 
 skip_group_SendMessageRequest(Bin, FNum, Z2, F@_1, F@_2,
-			      F@_3, TrUserData) ->
+			      F@_3, F@_4, TrUserData) ->
     {_, Rest} = read_group(Bin, FNum),
     dfp_read_field_def_SendMessageRequest(Rest, 0, Z2, F@_1,
-					  F@_2, F@_3, TrUserData).
+					  F@_2, F@_3, F@_4, TrUserData).
 
 skip_32_SendMessageRequest(<<_:32, Rest/binary>>, Z1,
-			   Z2, F@_1, F@_2, F@_3, TrUserData) ->
+			   Z2, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     dfp_read_field_def_SendMessageRequest(Rest, Z1, Z2,
-					  F@_1, F@_2, F@_3, TrUserData).
+					  F@_1, F@_2, F@_3, F@_4, TrUserData).
 
 skip_64_SendMessageRequest(<<_:64, Rest/binary>>, Z1,
-			   Z2, F@_1, F@_2, F@_3, TrUserData) ->
+			   Z2, F@_1, F@_2, F@_3, F@_4, TrUserData) ->
     dfp_read_field_def_SendMessageRequest(Rest, Z1, Z2,
-					  F@_1, F@_2, F@_3, TrUserData).
+					  F@_1, F@_2, F@_3, F@_4, TrUserData).
 
 d_msg_Request(Bin, TrUserData) ->
     dfp_read_field_def_Request(Bin, 0, 0,
@@ -828,10 +870,12 @@ merge_msg_LoginResponse(#'LoginResponse'{},
 merge_msg_SendMessageRequest(#'SendMessageRequest'{sender
 						       = PFsender,
 						   receiver = PFreceiver,
-						   text = PFtext},
+						   text = PFtext,
+						   msgtype = PFmsgtype},
 			     #'SendMessageRequest'{sender = NFsender,
 						   receiver = NFreceiver,
-						   text = NFtext},
+						   text = NFtext,
+						   msgtype = NFmsgtype},
 			     _) ->
     #'SendMessageRequest'{sender =
 			      if NFsender =:= undefined -> PFsender;
@@ -844,6 +888,10 @@ merge_msg_SendMessageRequest(#'SendMessageRequest'{sender
 			  text =
 			      if NFtext =:= undefined -> PFtext;
 				 true -> NFtext
+			      end,
+			  msgtype =
+			      if NFmsgtype =:= undefined -> PFmsgtype;
+				 true -> NFmsgtype
 			      end}.
 
 merge_msg_Request(#'Request'{login = PFlogin,
@@ -904,7 +952,8 @@ v_msg_LoginResponse(#'LoginResponse'{token = F1}, Path,
 -dialyzer({nowarn_function,v_msg_SendMessageRequest/3}).
 v_msg_SendMessageRequest(#'SendMessageRequest'{sender =
 						   F1,
-					       receiver = F2, text = F3},
+					       receiver = F2, text = F3,
+					       msgtype = F4},
 			 Path, _) ->
     if F1 == undefined -> ok;
        true -> v_type_string(F1, [sender | Path])
@@ -914,6 +963,9 @@ v_msg_SendMessageRequest(#'SendMessageRequest'{sender =
     end,
     if F3 == undefined -> ok;
        true -> v_type_string(F3, [text | Path])
+    end,
+    if F4 == undefined -> ok;
+       true -> v_type_string(F4, [msgtype | Path])
     end,
     ok;
 v_msg_SendMessageRequest(X, Path, _TrUserData) ->
@@ -985,7 +1037,9 @@ get_msg_defs() ->
        #field{name = receiver, fnum = 2, rnum = 3,
 	      type = string, occurrence = optional, opts = []},
        #field{name = text, fnum = 3, rnum = 4, type = string,
-	      occurrence = optional, opts = []}]},
+	      occurrence = optional, opts = []},
+       #field{name = msgtype, fnum = 4, rnum = 5,
+	      type = string, occurrence = optional, opts = []}]},
      {{msg, 'Request'},
       [#field{name = login, fnum = 1, rnum = 2,
 	      type = {msg, 'LoginRequest'}, occurrence = optional,
@@ -1039,7 +1093,9 @@ find_msg_def('SendMessageRequest') ->
      #field{name = receiver, fnum = 2, rnum = 3,
 	    type = string, occurrence = optional, opts = []},
      #field{name = text, fnum = 3, rnum = 4, type = string,
-	    occurrence = optional, opts = []}];
+	    occurrence = optional, opts = []},
+     #field{name = msgtype, fnum = 4, rnum = 5,
+	    type = string, occurrence = optional, opts = []}];
 find_msg_def('Request') ->
     [#field{name = login, fnum = 1, rnum = 2,
 	    type = {msg, 'LoginRequest'}, occurrence = optional,

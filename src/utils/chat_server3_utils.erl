@@ -13,7 +13,8 @@
 -export([product_token/0,
     to_string/1,
     to_list/1,
-    index/2]).
+    index/2,
+    to_list1/1]).
 
 %% @doc 产生token
 product_token() ->
@@ -44,12 +45,26 @@ to_list([H|T], R) ->
         true ->
             to_list(T, [H|R]);
         false ->
-            L4 = atom_to_list(H),
+            L4 = binary_to_list(H),
+            to_list(T, [L4|R])
+    end.
+
+to_list1(L) when is_list(L) ->
+    to_list1(L, []);
+to_list1(_) ->
+    {error, error_type}.
+to_list1([], R) -> lists:reverse(R);
+to_list1([H|T], R) ->
+    case is_list(H) of
+        true ->
+            to_list(T, [H|R]);
+        false ->
+            L4 = binary_to_list(H),
             to_list(T, [L4|R])
     end.
 
 -spec index(Atom::atom(), List::list()) -> ok.
-index(Atom,List)->
+index(Atom,List) when is_list(List)->
     index(Atom, List, 1);
 index(_, _) ->
     error.

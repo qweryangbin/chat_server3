@@ -27,7 +27,8 @@
 -record('SendMessageRequest',
         {sender                 :: iodata() | undefined, % = 1
          receiver               :: iodata() | undefined, % = 2
-         text                   :: iodata() | undefined % = 3
+         text                   :: iodata() | undefined, % = 3
+         msgtype                :: iodata() | undefined % = 4
         }).
 -endif.
 

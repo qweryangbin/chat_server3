@@ -17,7 +17,7 @@ websocket_init(State) ->
     {ok, State}.
 
 websocket_handle({binary, Msg}, State) ->
-    {_, User, Target, Text} = msg_pb:decode_msg(Msg, 'SendMessageRequest'),
+    {_, User, Target, Text, Type} = msg_pb:decode_msg(Msg, 'SendMessageRequest'),
     case Target == <<"all">> of
         true ->
             add_room(User, Text);
@@ -50,7 +50,18 @@ websocket_handle({binary, Msg}, State) ->
                                                                 true ->
                                                                     user_login_out(User, Msg);
                                                                 false ->
-                                                                    send_private_msg(Target, Msg)
+                                                                    case Target == <<"loadMsg">> of
+                                                                        true ->
+                                                                            load_private_msg(User);
+                                                                        false ->
+                                                                            case Target == <<"updateMsgType">> of
+                                                                                true ->
+                                                                                    MsgList = chat_server3_mnesia:select_all_prviate_msg(User),
+                                                                                    [chat_server3_mnesia:update_msg_type(Msg) || Msg <- MsgList];
+                                                                                false ->
+                                                                                    send_private_msg(User,Target,Text, Msg, Type)
+                                                                            end
+                                                                    end
                                                             end
                                                     end
                                             end
@@ -65,23 +76,7 @@ websocket_handle(_Data, State) ->
 
 websocket_info({timeout, _Ref, Msg}, State) ->
     {reply, {text, Msg}, State};
-websocket_info({send, Msg}, State) ->
-    {reply, {binary, Msg}, State};
-websocket_info({push_user, Msg}, State) ->
-    {reply, {binary, Msg}, State};
-websocket_info({push_room, Msg}, State) ->
-    {reply, {binary, Msg}, State};
-websocket_info({push_one_room, Msg}, State) ->
-    {reply, {binary, Msg}, State};
-websocket_info({push_room_user, Msg}, State) ->
-    {reply, {binary, Msg}, State};
-websocket_info({send_room_msg, Msg}, State) ->
-    {reply, {binary, Msg}, State};
-websocket_info({update_room, Msg}, State) ->
-    {reply, {binary, Msg}, State};
-websocket_info({push_room_msg, Msg}, State) ->
-    {reply, {binary, Msg}, State};
-websocket_info({user_login_out, Msg}, State) ->
+websocket_info({_Request, Msg}, State) ->
     {reply, {binary, Msg}, State};
 websocket_info(_Info, State) ->
     {ok, State}.
@@ -111,7 +106,6 @@ add_room_user(User, Text) ->
 %% @doc 初始化群聊房间页面显示
 init_chat_room_user(User) ->
     RoomName = binary_to_atom(User, utf8),
-    %erlang:link(whereis(RoomName)),
     chat_server3_ets:insert(webprocess, RoomName, self()),
     RoomProcessList = ets:match_object(webprocess, {RoomName, '_'}),
     NewRoomProcessList = [X || {_, X} <- RoomProcessList],
@@ -139,7 +133,7 @@ user_quit_room(User, Msg) ->
     CurrentRoomName = list_to_atom(string:sub_word(binary_to_list(User), 1, $:)),
     chat_server3_room_wk:send_user_quit_room_msg(CurrentRoomName, Msg, self()),
     chat_server3_mnesia:remove_room_user(CurrentRoomName, CurrentUser),
-    RoomUserList = chat_server3_mnesia:select_room_user(),
+    RoomUserList = chat_server3_mnesia:select_room_user(CurrentRoomName),
     case length(RoomUserList) > 0 of
         true ->
             RoomProcessList = ets:match_object(webprocess, {CurrentRoomName, '_'}),
@@ -156,7 +150,6 @@ user_quit_room(User, Msg) ->
                     ok
             end,
             chat_server3_room_sup:delete_room(CurrentRoomName)
-        %exit(shutdown)
     end.
 
 %% @doc 删除群聊房间
@@ -171,13 +164,35 @@ delete_chat_room(User, Text) ->
 %% @doc 用户退出登录
 user_login_out(User, Msg) ->
     chat_server3_ets:match_delete(player,User),
-    push_all_user(User),
     chat_server3_player_wk:send_user_login_out_msg(binary_to_atom(User, utf8), Msg),
     chat_server3_player_sup:delete_palyer(binary_to_atom(User, utf8)).
 
 %% @doc 发送私聊消息
-send_private_msg(Target, Msg) ->
-    chat_server3_player_wk:send(binary_to_atom(Target, utf8), Msg).
+send_private_msg(User,Target,Text, Msg, Type) ->
+    Bin = unicode:characters_to_list(Text),
+    Time = calendar:local_time(),
+    case Type == <<"off-line">> of
+        true ->
+            chat_server3_mnesia:add_private_msg(User,Target, Bin, Type, Time);
+        false ->
+            chat_server3_mnesia:add_private_msg(User,Target, Bin, Type, Time),
+            chat_server3_player_wk:send(binary_to_atom(Target, utf8), Msg)
+    end.
+
+%% @doc 加载载私聊离线消息
+load_private_msg(UserName) ->
+    PrivateMsgList = chat_server3_mnesia:select_private_msg(UserName),
+    case length(PrivateMsgList) > 0 of
+        true ->
+            NewMessages = chat_server3_utils:to_string(PrivateMsgList),
+            NewMessages1 = chat_server3_utils:to_list1(NewMessages),
+            NewMessages2 = lists:foldl(fun(E, S) -> S ++ E ++ "," end, ",", NewMessages1),
+            MsgList = #'SendMessageRequest'{receiver = "privatemsg", text = NewMessages2},
+            EncodeMsgList = msg_pb:encode_msg(MsgList),
+            chat_server3_player_wk:push_user_private_msg(binary_to_atom(UserName, utf8), EncodeMsgList);
+        false ->
+            ok
+    end.
 
 %% @doc 推送当前在线玩家
 -spec push_all_user(UserName::binary()) -> ok.

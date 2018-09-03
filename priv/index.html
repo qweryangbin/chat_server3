@@ -11,6 +11,7 @@
       $(document).ready(function(){
           connect();
           $("#status").append("<p>当前登录用户:" + user + "</p>");
+          setTimeout(function(){ load(); }, 1000);
       });
 
 
@@ -28,7 +29,7 @@
           websocket.close();
       };
 
-      function sendTxt() {
+      function sendOnlineText() {
           if(websocket.readyState != websocket.OPEN){
               connect();
           }
@@ -43,7 +44,32 @@
               }else{
                   var Target = to.split("@")[1];
                   var WsMsg = root.lookup("chat.SendMessageRequest");
-                  var message = WsMsg.create({sender: user, receiver: Target, text: txt});
+                  var message = WsMsg.create({sender: user, receiver: Target, text: txt, msgtype: "on-line"});
+                  var endcodeMsg = WsMsg.encode(message).finish();
+                  $("#send_txt").val("");
+                  showScreen('我: ' + txt);
+                  websocket.send(endcodeMsg);
+              }
+          });
+      };
+
+      function sendoffLineText() {
+          if(websocket.readyState != websocket.OPEN){
+              connect();
+          }
+          protobuf.load("proto/msg.proto", function(err, root){
+              if(err) throw err;
+              var txt = $("#send_txt").val();
+              var to = $("#to").val();
+              if(txt == "" || $.trim(txt).length == 0){
+                  alert("请输入要发送的消息！");
+              }else if(to == "@"){
+                  alert("请选择消息要发送给的用户！");
+              }else{
+                  var Target = to.split("@")[1];
+                  var WsMsg = root.lookup("chat.SendMessageRequest");
+                  var message = WsMsg.create({sender: user, receiver: Target, text: txt, msgtype: "off-line"});
+                  console.log(message);
                   var endcodeMsg = WsMsg.encode(message).finish();
                   $("#send_txt").val("");
                   showScreen('我: ' + txt);
@@ -65,10 +91,12 @@
 
       function onClose(evt) {
           showScreen('<span style="color: red;">断开连接 </span>');
+
       };
 
       function showScreen(txt) {
           $('#output').append('<p>' + txt + '</p>');
+          $('#output').scrollTop( $('#output')[0].scrollHeight);
       };
 
       function onMessage(evt) {
@@ -96,6 +124,9 @@
                       });
                   }else if(decodeMsg.receiver == "userexit"){
                       showScreen('<span style="color: red;"> ' + decodeMsg.text + '</span>');
+                      updateUserList(decodeMsg.sender);
+                  }else if(decodeMsg.receiver == "privatemsg"){
+                      showMessages(decodeMsg.text)
                   }else{
                       showScreen('<span style="color: blue;"> ' + decodeMsg.sender + ' : ' + decodeMsg.text + '</span>');
                   }
@@ -117,15 +148,21 @@
           var UserList = list.split(",");
           for(var i = 1; i < UserList.length-1; i++){
                if(UserList[i] != user){
-                   $(".users").append("<li><a onclick='send(this)' style='cursor:pointer;color:blue'>" + UserList[i] + "</a></li>");
+                   $(".users").append("<li><a onclick='send(this)' style='cursor:pointer;color:#0000ff'>" + UserList[i] + "</a></li>");
                }
           }
       };
 
       function send(obj){
           $("#to").val("@"+obj.innerText);
-          //window.open("/privatechat");
-      }
+          var val = $('li:contains('+ obj.innerText + ') a').css('color');
+          var color = val.colorHex();
+          if(color == "#cccccc"){
+             $("#send_button").attr("onclick", "sendoffLineText()");
+          }else{
+             $("#send_button").attr("onclick", "sendOnlineText()");
+          }
+      };
 
       function create(){
           var name = prompt("请输入群聊房间的名字", "");
@@ -187,7 +224,91 @@
                  websocket.send(endcodeMsg);
          });
          window.location.href="http://192.168.56.130:8080/login";
-      }
+      };
+
+      function updateUserList(user){
+         $('li:contains('+ user + ') a')[0].style.color = "#cccccc";
+      };
+
+      var reg = /^#([0-9a-fA-f]{3}|[0-9a-fA-f]{6})$/;
+      /*RGB颜色转换为16进制*/
+      String.prototype.colorHex = function(){
+          var that = this;
+          if(/^(rgb|RGB)/.test(that)){
+              var aColor = that.replace(/(?:\(|\)|rgb|RGB)*/g,"").split(",");
+              var strHex = "#";
+              for(var i=0; i<aColor.length; i++){
+                  var hex = Number(aColor[i]).toString(16);
+                  if(hex === "0"){
+                      hex += hex;
+                  }
+                  strHex += hex;
+              }
+              if(strHex.length !== 7){
+                  strHex = that;
+              }
+              return strHex;
+          }else if(reg.test(that)){
+              var aNum = that.replace(/#/,"").split("");
+              if(aNum.length === 6){
+                  return that;
+              }else if(aNum.length === 3){
+                  var numHex = "#";
+                  for(var i=0; i<aNum.length; i+=1){
+                      numHex += (aNum[i]+aNum[i]);
+                  }
+                  return numHex;
+              }
+          }else{
+              return that;
+          }
+      };
+
+      function load(){
+          protobuf.load("proto/msg.proto", function(err, root){
+              if(err) throw err;
+              var WsMsg = root.lookup("chat.SendMessageRequest");
+              var message = WsMsg.create({sender: user, receiver: "loadMsg"});
+              var endcodeMsg = WsMsg.encode(message).finish();
+              websocket.send(endcodeMsg);
+          });
+      };
+
+      function showMessages(list){
+          var MessagesList = list.split(",");
+          var i = 1;
+          while(i <= MessagesList.length-2){
+             if(MessagesList[i+1] == "off-line"){
+                 $('#output').append('<p style="color:blue">' + MessagesList[i+2] + '：' +  MessagesList[i] + '<span style="color:red">(未读消息)</span></p>');
+                 $('#output').scrollTop( $('#output')[0].scrollHeight);
+             }else if(MessagesList[i+1] == "on-line"){
+                 $('#output').append('<p style="color:blue">' + MessagesList[i+2] + '：' +  MessagesList[i] + '</p>');
+                 $('#output').scrollTop( $('#output')[0].scrollHeight);
+             }
+             i = i + 3;
+          }
+          setTimeout(function(){ updateMsgType(); }, 1000);
+      };
+
+      function updateMsgType(){
+          protobuf.load("proto/msg.proto", function(err, root){
+              if(err) throw err;
+              var WsMsg = root.lookup("chat.SendMessageRequest");
+              var message = WsMsg.create({sender: user, receiver: "updateMsgType"});
+              var endcodeMsg = WsMsg.encode(message).finish();
+              websocket.send(endcodeMsg);
+          });
+          setTimeout(function(){ clearMsg(); }, 5000);
+      };
+
+      function clearMsg(){
+          var objects = $("#output").children("p").children("span")
+          for(var i=0;i<objects.length;i++){
+             if(objects[i].innerText == "(未读消息)"){
+                 objects[i].remove();
+             }
+          }
+      };
     </script>
 </head>
 
@@ -197,7 +318,7 @@
     <div id="status"></div>
 </div>
 <div style="width:150px;height:400px;border-color:red;border:1px solid black;overflow-y:auto;float:left">
-    <p style="text-align:center">当前在线用户</p>
+    <p style="text-align:center">当前用户(蓝色表示在线用户,灰色表示离线用户)</p>
     <ul style="list-style:none;" class="users">
     </ul>
 </div>
@@ -211,7 +332,7 @@
     <p>
         <input type='text' id="to" value="@" style="width:60px;" readonly/>
         <input type='text' id="send_txt" value=""/>
-        <button type="button" onclick="sendTxt();">发送</button>
+        <button id="send_button" type="button" onclick="">发送</button>
         <button id="clear" onclick="clearScreen()" >清除</button>
         <button id="create" onclick="create()">创建群聊房间</button>
         <button id="remove" onclick="remove()">退出登录</button>
