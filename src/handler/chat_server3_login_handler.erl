@@ -24,11 +24,14 @@ maybe_echo(<<"POST">>, true, Req0) ->
     Password = element(2, lists:keyfind(<<"password">>, 1, PostVals)),
     Token = chat_server3_utils:product_token(),
     Flag = check_login(Name, Password, Token),
-    case Flag == false of
-        true ->
-            Echo = "/loginfail",
+    case Flag of
+        repeatlogin ->
+            Echo = "/repeatlogin",
             cowboy_req:reply(302, #{<<"Location">> => list_to_binary(Echo)}, Req);
         false ->
+            Echo = "/loginfail",
+            cowboy_req:reply(302, #{<<"Location">> => list_to_binary(Echo)}, Req);
+        _ ->
             Req1 = cowboy_req:set_resp_cookie(<<"token">>, Token, Req, #{path => <<"/">>}),
             Req2 = cowboy_req:set_resp_cookie(<<"user">>, Name, Req1, #{path => <<"/">>}),
             Echo = "/index",
@@ -53,7 +56,12 @@ check_login(UserName, Password, Token) ->
     case Password =:= H of
         true ->
             %% 将token和当前登录用户绑定起来
-            chat_server3_ets:insert(player, Token, UserName);
+            case whereis(binary_to_atom(UserName, utf8)) == undefined of
+                true ->
+                    chat_server3_ets:insert(player, Token, UserName);
+                false ->
+                    repeatlogin
+            end;
         false ->
             false
     end.
