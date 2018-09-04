@@ -176,7 +176,12 @@ add_private_msg(Sender, Receiver, Msg, Type, Time) ->
 
 %% @doc 查询私聊离线消息
 select_private_msg(UserName) ->
-    do(qlc:q([{X#privatemessages.sender, X#privatemessages.type, X#privatemessages.msg} || X <- mnesia:table(privatemessages), X#privatemessages.receiver =:= UserName])).
+    F = fun() ->
+        Q = qlc:q([{X#privatemessages.sender, X#privatemessages.type, X#privatemessages.msg, X#privatemessages.time} || X <- mnesia:table(privatemessages), (X#privatemessages.receiver =:= UserName) or (X#privatemessages.sender =:= UserName)]),
+        qlc:e(qlc:keysort(4, Q, [{order, ascending}]))
+        end,
+    {atomic, Val} = mnesia:transaction(F),
+    Val.
 
 %% @doc 查询所有私聊离线消息
 select_all_prviate_msg(UserName) ->

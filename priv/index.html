@@ -69,7 +69,6 @@
                   var Target = to.split("@")[1];
                   var WsMsg = root.lookup("chat.SendMessageRequest");
                   var message = WsMsg.create({sender: user, receiver: Target, text: txt, msgtype: "off-line"});
-                  console.log(message);
                   var endcodeMsg = WsMsg.encode(message).finish();
                   $("#send_txt").val("");
                   showScreen('我: ' + txt);
@@ -276,16 +275,25 @@
 
       function showMessages(list){
           var MessagesList = list.split(",");
+          console.log(MessagesList);
           var i = 1;
           while(i <= MessagesList.length-2){
-             if(MessagesList[i+1] == "off-line"){
-                 $('#output').append('<p style="color:blue">' + MessagesList[i+2] + '：' +  MessagesList[i] + '<span style="color:red">(未读消息)</span></p>');
+             if(MessagesList[i+2] == "off-line"){
+                 if(MessagesList[i+3] == user){
+                    $('#output').append('<p style="color:black">' + MessagesList[i+3] + '：' +  MessagesList[i+1] + '</p>');
+                 }else{
+                    $('#output').append('<p style="color:blue">' + MessagesList[i+3] + '：' +  MessagesList[i+1] + '<span style="color:red">(未读消息)</span></p>');
+                 }
                  $('#output').scrollTop( $('#output')[0].scrollHeight);
-             }else if(MessagesList[i+1] == "on-line"){
-                 $('#output').append('<p style="color:blue">' + MessagesList[i+2] + '：' +  MessagesList[i] + '</p>');
+             }else if(MessagesList[i+2] == "on-line"){
+                 if(MessagesList[i+3] == user){
+                    $('#output').append('<p style="color:black">' + MessagesList[i+3] + '：' +  MessagesList[i+1] + '</p>');
+                 }else{
+                    $('#output').append('<p style="color:blue">' + MessagesList[i+3] + '：' +  MessagesList[i+1] + '</p>');
+                 }
                  $('#output').scrollTop( $('#output')[0].scrollHeight);
              }
-             i = i + 3;
+             i = i + 4;
           }
           setTimeout(function(){ updateMsgType(); }, 1000);
       };

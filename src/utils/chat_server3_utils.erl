@@ -59,8 +59,14 @@ to_list1([H|T], R) ->
         true ->
             to_list1(T, [H|R]);
         false ->
-            L4 = binary_to_list(H),
-            to_list1(T, [L4|R])
+            case is_integer(H) of
+                true ->
+                    L4 = integer_to_list(H),
+                    to_list1(T, [L4|R]);
+                false ->
+                    L4 = binary_to_list(H),
+                    to_list1(T, [L4|R])
+            end
     end.
 
 -spec index(Atom::atom(), List::list()) -> ok.

@@ -18,57 +18,30 @@ websocket_init(State) ->
 
 websocket_handle({binary, Msg}, State) ->
     {_, User, Target, Text, Type} = msg_pb:decode_msg(Msg, 'SendMessageRequest'),
-    case Target == <<"all">> of
-        true ->
+    case Target of
+        <<"all">> ->
             add_room(User, Text);
-        false ->
-            case Target == <<"getUser">> of
-                true ->
-                    init_show(State);
-                false ->
-                    case Target == <<"addUser">> of
-                        true ->
-                            add_room_user(User, Text);
-                        false ->
-                            case Target == <<"room">> of
-                                true ->
-                                    init_chat_room_user(User);
-                                false ->
-                                    case Target == <<"roomUser">> of
-                                        true ->
-                                            send_chat_room_msg(User, Text, Msg);
-                                        false ->
-                                            case Target == <<"exit">> of
-                                                true ->
-                                                    user_quit_room(User, Msg);
-                                                false ->
-                                                    case Target == <<"deleteroom">> of
-                                                        true ->
-                                                            delete_chat_room(User, Text);
-                                                        false ->
-                                                            case Target == <<"userexit">> of
-                                                                true ->
-                                                                    user_login_out(User, Msg);
-                                                                false ->
-                                                                    case Target == <<"loadMsg">> of
-                                                                        true ->
-                                                                            load_private_msg(User);
-                                                                        false ->
-                                                                            case Target == <<"updateMsgType">> of
-                                                                                true ->
-                                                                                    MsgList = chat_server3_mnesia:select_all_prviate_msg(User),
-                                                                                    [chat_server3_mnesia:update_msg_type(Msg) || Msg <- MsgList];
-                                                                                false ->
-                                                                                    send_private_msg(User,Target,Text, Msg, Type)
-                                                                            end
-                                                                    end
-                                                            end
-                                                    end
-                                            end
-                                    end
-                            end
-                    end
-            end
+        <<"getUser">> ->
+            init_show(State);
+        <<"addUser">> ->
+            add_room_user(User, Text);
+        <<"room">> ->
+            init_chat_room_user(User);
+        <<"roomUser">> ->
+            send_chat_room_msg(User, Text, Msg);
+        <<"exit">> ->
+            user_quit_room(User, Msg);
+        <<"deleteroom">> ->
+            delete_chat_room(User, Text);
+        <<"userexit">> ->
+            user_login_out(User, Msg);
+        <<"loadMsg">> ->
+            load_private_msg(User);
+        <<"updateMsgType">> ->
+            MsgList = chat_server3_mnesia:select_all_prviate_msg(User),
+            [chat_server3_mnesia:update_msg_type(Msg) || Msg <- MsgList];
+        _ ->
+            send_private_msg(User,Target,Text, Msg, Type)
     end,
     {ok, State};
 websocket_handle(_Data, State) ->
@@ -123,8 +96,9 @@ send_chat_room_msg(User, Text, Msg) ->
     CurrentUser = list_to_atom(string:sub_word(binary_to_list(User), 2, $:)),
     CurrentRoomName = list_to_atom(string:sub_word(binary_to_list(User), 1, $:)),
     Bin = unicode:characters_to_list(Text),
-    Date = calendar:local_time(),
-    chat_server3_mnesia:add_messages(CurrentRoomName, CurrentUser, Bin, Date),
+    Date = calendar:now_to_universal_time(erlang:now()),
+    Time = calendar:datetime_to_gregorian_seconds(Date),
+    chat_server3_mnesia:add_messages(CurrentRoomName, CurrentUser, Bin, Time),
     chat_server3_room_wk:send_room_msg(CurrentRoomName, Msg).
 
 %% @doc 用户退出群聊房间
@@ -170,7 +144,8 @@ user_login_out(User, Msg) ->
 %% @doc 发送私聊消息
 send_private_msg(User,Target,Text, Msg, Type) ->
     Bin = unicode:characters_to_list(Text),
-    Time = calendar:local_time(),
+    Date = calendar:now_to_universal_time(erlang:now()),
+    Time = calendar:datetime_to_gregorian_seconds(Date),
     case Type == <<"off-line">> of
         true ->
             chat_server3_mnesia:add_private_msg(User,Target, Bin, Type, Time);
