@@ -94,7 +94,12 @@ select_user(UserName) ->
 
 %% @doc 查询某个群聊房间的消息记录（指定列）
 select_room_message(RoomName) ->
-    do(qlc:q([{X#messages.username, X#messages.text} || X <- mnesia:table(messages), X#messages.roomname =:= RoomName])).
+    F = fun() ->
+        Q = qlc:q([{X#messages.username, X#messages.text, X#messages.time} || X <- mnesia:table(messages), X#messages.roomname =:= RoomName]),
+        qlc:e(qlc:keysort(3, Q, [{order, ascending}]))
+        end,
+    {atomic, Val} = mnesia:transaction(F),
+    Val.
 
 %% @doc 查询某个群聊房间的消息记录（所有列）
 select_room_message_all_row(RoomName) ->

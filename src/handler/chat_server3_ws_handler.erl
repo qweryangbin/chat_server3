@@ -98,7 +98,7 @@ send_chat_room_msg(User, Text, Msg) ->
     Bin = unicode:characters_to_list(Text),
     Date = calendar:now_to_universal_time(erlang:now()),
     Time = calendar:datetime_to_gregorian_seconds(Date),
-    chat_server3_mnesia:add_messages(CurrentRoomName, CurrentUser, Bin, Time),
+    chat_server3_mnesia:add_messages(CurrentRoomName, atom_to_binary(CurrentUser, utf8), Bin, Time),
     chat_server3_room_wk:send_room_msg(CurrentRoomName, Msg).
 
 %% @doc 用户退出群聊房间
@@ -214,7 +214,7 @@ update_room(UserName, CurrentRoomName) ->
 push_offline_message(RoomName, Pid) ->
     Messages = chat_server3_mnesia:select_room_message(RoomName),
     NewMessages = chat_server3_utils:to_string(Messages),
-    NewMessages1 = chat_server3_utils:to_list(NewMessages),
+    NewMessages1 = chat_server3_utils:to_list1(NewMessages),
     NewMessages2 = lists:foldl(fun(E, S) -> S ++ E ++ "," end, ",", NewMessages1),
     Msg = #'SendMessageRequest'{sender = "showmessage", receiver = "showmessage", text = NewMessages2},
     EncodeMsg = msg_pb:encode_msg(Msg),

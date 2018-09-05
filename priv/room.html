@@ -128,22 +128,17 @@
              });
          };
 
-         //function load(){
-             //protobuf.load("proto/msg.proto", function(err, root){
-                //if(err) throw err;
-                //var WsMsg = root.lookup("chat.SendMessageRequest");
-                //var message = WsMsg.create({sender: roomName, receiver: "loadRoomMsg", text: ""});
-                //var endcodeMsg = WsMsg.encode(message).finish();
-                //websocket.send(endcodeMsg);
-             //});
-         //};
-
          function showMessages(list){
              var MessagesList = list.split(",");
-             for(var i = 1; i < MessagesList.length-2; i++){
-                if((i+1) % 2 == 0){
-                    $('#output').append('<p style="color:blue">' + MessagesList[i+1] + '：' +  MessagesList[i] + '</p>');
+             console.log(MessagesList);
+             var i = 1;
+             while(i <= MessagesList.length-2){
+                if(MessagesList[i+2] == user){
+                    $('#output').append('<p style="color:black">' + MessagesList[i+2] + '：' +  MessagesList[i+1] + '</p>');
+                }else{
+                    $('#output').append('<p style="color:blue">' + MessagesList[i+2] + '：' +  MessagesList[i+1] + '</p>');
                 }
+                i = i + 3;
              }
          };
     </script>

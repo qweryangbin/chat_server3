@@ -12,7 +12,6 @@
 %% API
 -export([product_token/0,
     to_string/1,
-    to_list/1,
     index/2,
     to_list1/1]).
 
@@ -29,25 +28,28 @@ to_string(_) ->
 to_string([], R) -> lists:reverse(R);
 to_string([H|T], R) ->
     to_string(T,tuple_to_list(H) ++ R);
-%%to_string([H|T], R) when is_list(H) ->
-%%    to_string(T,H ++ R);
 to_string(_, _) ->
     {error,error_type}.
 
-
-to_list(L) when is_list(L) ->
-    to_list(L, []);
-to_list(_) ->
-    {error, error_type}.
-to_list([], R) -> lists:reverse(R);
-to_list([H|T], R) ->
-    case is_list(H) of
-        true ->
-            to_list(T, [H|R]);
-        false ->
-            L4 = atom_to_list(H),
-            to_list(T, [L4|R])
-    end.
+%%to_list(L) when is_list(L) ->
+%%    to_list(L, []);
+%%to_list(_) ->
+%%    {error, error_type}.
+%%to_list([], R) -> lists:reverse(R);
+%%to_list([H|T], R) ->
+%%    case is_list(H) of
+%%        true ->
+%%            to_list(T, [H|R]);
+%%        false ->
+%%            case is_integer(H) of
+%%                true ->
+%%                    L4 = integer_to_list(H),
+%%                    to_list1(T, [L4|R]);
+%%                false ->
+%%                    L4 = binary_to_list(H),
+%%                    to_list1(T, [L4|R])
+%%            end
+%%    end.
 
 to_list1(L) when is_list(L) ->
     to_list1(L, []);
