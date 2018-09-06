@@ -26,7 +26,7 @@ websocket_handle({binary, Msg}, State) ->
         <<"addUser">> ->
             add_room_user(User, Text);
         <<"room">> ->
-            init_chat_room_user(User);
+            init_chat_room_user(User, Text);
         <<"roomUser">> ->
             send_chat_room_msg(User, Text, Msg);
         <<"exit">> ->
@@ -77,11 +77,12 @@ add_room_user(User, Text) ->
     chat_server3_mnesia:add_room_user(Name, binary_to_atom(Text, utf8)).
 
 %% @doc 初始化群聊房间页面显示
-init_chat_room_user(User) ->
+init_chat_room_user(User, Text) ->
     RoomName = binary_to_atom(User, utf8),
-    chat_server3_ets:insert(webprocess, RoomName, self()),
-    RoomProcessList = ets:match_object(webprocess, {RoomName, '_'}),
-    NewRoomProcessList = [X || {_, X} <- RoomProcessList],
+    UserName = binary_to_atom(Text, utf8),
+    chat_server3_ets:insert_webprocess(webprocess, RoomName, UserName, self()),
+    RoomProcessList = ets:match_object(webprocess, {RoomName, '_', '_'}),
+    NewRoomProcessList = [X || {_, _, X} <- RoomProcessList],
     push_all_room_user(RoomName, NewRoomProcessList),
     Messages = chat_server3_mnesia:select_room_message(RoomName),
     case length(Messages) > 0 of

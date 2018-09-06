@@ -28,7 +28,7 @@
             protobuf.load("proto/msg.proto", function(err, root){
                 if(err) throw err;
                 var WsMsg = root.lookup("chat.SendMessageRequest");
-                var message = WsMsg.create({sender: roomName, receiver: "room", text: "room"});
+                var message = WsMsg.create({sender: roomName, receiver: "room", text: user});
                 var endcodeMsg = WsMsg.encode(message).finish();
                 websocket.send(endcodeMsg);
             });
@@ -36,6 +36,7 @@
 
         function onClose(evt) {
             showScreen('<span style="color: red;">断开连接 </span>');
+            setTimeout(function () {window.close()},3000);
         };
 
         function showScreen(txt) {
@@ -44,6 +45,7 @@
 
          function onError(evt) {
             showScreen('<span style="color: red;">未连接上</span>');
+            setTimeout(function () {window.close()},3000);
          };
 
          function clearScreen(){
@@ -64,7 +66,7 @@
                     websocket.send(endcodeMsg);
                 });
             }
-         };
+         };addUser
 
          function onMessage(evt) {
             var reader = new FileReader();
@@ -84,7 +86,11 @@
                         showMessages(decodeMsg.text);
                         $('#output').scrollTop( $('#output')[0].scrollHeight);
                     }else{
-                        showScreen('<span style="color:blue;"> ' + decodeMsg.sender.split(":")[1] + ' : ' + decodeMsg.text + '</span>');
+                        if(decodeMsg.sender.split(":")[1] == user){
+                            showScreen('<span style="color:black;"> ' + decodeMsg.sender.split(":")[1] + ' : ' + decodeMsg.text + '</span>');
+                        }else{
+                            showScreen('<span style="color:blue;"> ' + decodeMsg.sender.split(":")[1] + ' : ' + decodeMsg.text + '</span>');
+                        }
                         $('#output').scrollTop( $('#output')[0].scrollHeight);
                     }
                 });

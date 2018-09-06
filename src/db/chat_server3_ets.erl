@@ -13,35 +13,29 @@
 -export([make_new_ets/0,
     insert/3,
     lookup/2,
-    make_room_user/1,
-    insert_room_user/2,
     delete/2,
     match_delete/2,
-    delete_tab/1]).
+    delete_tab/1,
+    insert_webprocess/4]).
 
 %% @doc 创建ets表
 make_new_ets() ->
     ets:new(player, [set, public, named_table]),
-    %%ets:new(room, [set, public, named_table]),
     ets:new(webprocess, [bag, public, named_table]).
-
-%% @doc 创建房间当前用户表
-make_room_user(Name) ->
-    ets:new(Name, [bag, public, named_table]).
 
 %% @doc 往表中插入数据
 insert(TabName, Key, Value) ->
     ets:insert(TabName, {Key, Value}).
+
+%% @doc 往webprocess表中插入数据
+insert_webprocess(TabName, RoomName, UserName, Pid) ->
+    ets:insert(TabName, {RoomName, UserName, Pid}).
 
 %% @doc 查询数据
 lookup(TabName,Key) ->
     [L|_]= ets:lookup(TabName, Key),
     {_, UserName} = L,
     UserName.
-
-%% @doc 往房间当前用户表插入数据
-insert_room_user(Name, UserName) ->
-    ets:insert(Name, {UserName}).
 
 %% @doc 删除表中数据
 delete(TabId, Object) ->

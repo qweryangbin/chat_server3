@@ -90,6 +90,7 @@
 
       function onClose(evt) {
           showScreen('<span style="color: red;">断开连接 </span>');
+          setTimeout(function () {location.href = "http://192.168.56.130:8080/login"},3000);
 
       };
 
@@ -135,6 +136,7 @@
 
       function onError(evt) {
           showScreen('<span style="color: red;">未连接上</span>');
+          setTimeout(function () {location.href = "http://192.168.56.130:8080/login"},3000);
       };
 
       function clearScreen()

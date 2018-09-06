@@ -90,6 +90,8 @@ start_link(A) ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
+    timer:send_interval(10000,self(),check),
+    timer:send_interval(5000, self(), is_live),
     {ok, #state{room = []}}.
 
 %%--------------------------------------------------------------------
@@ -122,8 +124,8 @@ handle_call({send_user_quit_room_msg, RoomName, Msg, Pid}, _From, State) ->
 
 %% @doc 发送群聊房间消息
 handle_call({send_room_msg, RoomName, Msg}, _From, State) ->
-    RoomProcessList = ets:match_object(webprocess, {RoomName, '_'}),
-    [Pid ! {send_room_msg, Msg} || {_, Pid} <- RoomProcessList],
+    RoomProcessList = ets:match_object(webprocess, {RoomName, '_', '_'}),
+    [Pid ! {send_room_msg, Msg} || {_, _, Pid} <- RoomProcessList],
     {reply, ok, State};
 
 %% @doc 显示群聊离线消息
@@ -159,6 +161,25 @@ handle_cast(_Request, State) ->
     {noreply, NewState :: #state{}} |
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
+
+%% @doc 玩家全部退出后房间进程也必须得全部结束
+handle_info(check, State) ->
+    PlayerList = supervisor:which_children(chat_server3_player_sup),
+    case length(PlayerList) > 0 of
+        true ->
+            ok;
+        false ->
+            RoomList = supervisor:which_children(chat_server3_room_sup),
+            [delete_room(X) || X <- RoomList]
+    end,
+    {noreply,State};
+
+%% @doc 检测某个玩家的群聊websocket进程是否还活着
+handle_info(is_live, State) ->
+    RoomProcessList = ets:match_object(webprocess, {'_', '_', '_'}),
+    [remove_webprocess(X) || X <- RoomProcessList],
+    {noreply,State};
+
 handle_info(_Request, State) ->
     {noreply,State}.
 
@@ -199,3 +220,18 @@ code_change(_OldVsn, State, _Extra) ->
 -spec call(RoomName::atom(), Msg::binary()) -> ok.
 call(RoomName, Msg) ->
     gen_server:call(RoomName, Msg).
+
+delete_room(X) ->
+    {_, Pid, _, _} = X,
+    {_, RegName} = erlang:process_info(Pid, registered_name),
+    chat_server3_room_sup:delete_room(RegName).
+
+remove_webprocess(X) ->
+    {_, _, Pid} = X,
+    Flag = erlang:is_process_alive(Pid),
+    case Flag of
+        true ->
+            ok;
+        false ->
+            ets:match_delete(webprocess, X)
+    end.

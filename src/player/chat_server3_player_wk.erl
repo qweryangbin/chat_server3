@@ -109,7 +109,7 @@ start_link(A) ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
-    timer:send_interval(15000,self(),check),
+    timer:send_interval(5000,self(),check),
     {ok, #state{client = []}}.
 
 %%--------------------------------------------------------------------
