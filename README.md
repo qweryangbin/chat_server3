@@ -1,7 +1,7 @@
 chat_server3
 =====
 
-An OTP application
+An OTP application,学习erlang时自己写的一个聊天服务器
 
 Build
 -----
